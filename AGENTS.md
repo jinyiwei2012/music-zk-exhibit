@@ -207,15 +207,10 @@ prove 走 WSL2(第一方组件)+ CLI 自动委托;其余全部原生 Windows;原
 
 ## 9. 当前状态与你的第一步
 
-- 仓库:`main`,HEAD 含 PRD/SPEC/ZKP_EXPLAINED/README/PLAN/.gitignore,无任何代码
-- 环境:§2 所列;conda env `music-zk`(Python 3.12.14)已创建;WSL2 内尚未安装 Rust/RISC Zero
+- 仓库:`main`,HEAD 含 PRD/SPEC/ZKP_EXPLAINED/README/PLAN/.gitignore 及 Phase 0 代码(rust/ workspace)
+- 环境:§2 所列;conda env `music-zk`(Python 3.12.14)已创建;**WSL2 工具链已装齐**(rustup/cargo-risczero/risc0 工具链,版本与接线见 `docs/ENV.md`)
+- **Phase 0 已过门禁**(2026-08-31):hello-guest 真实证明 7.31 s / 604 MiB / receipt 216 KiB,独立 verifier 复验通过;数字见 `docs/benchmarks.md`
 
-**第一步(现在就做)**:
+**第一步(现在做)**:读 SPEC §3/§6,开始 Phase 1 = SPEC M0 关系最小闭环(reference-core framing → guest 重算 C_M → 202 字节 journal → Python verifier 骨架 → 1 正 4 负)。WSL 内执行 Rust 命令前先 `source ~/.zk-env.sh`(代理/镜像/CARGO_TARGET_DIR,见 ENV.md)。
 
-```bash
-wsl -d Ubuntu -- bash -lc 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
-# 然后按 RISC Zero 官方文档安装 rzup 并安装工具链,把实际版本写入 docs/ENV.md
-# 接着建 rust workspace 骨架(§4),开始 Phase 0 的 hello-guest
-```
-
-完成 Phase 0 门禁后向用户汇报实测数字,再继续 Phase 1。
+完成 Phase 1 门禁后向用户汇报,再继续 Phase 2。
