@@ -1,0 +1,39 @@
+# --- Secrets (must never be committed) ---
+creator-secret/
+*private-key*
+salt.bin
+proof-work/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# --- Rust ---
+target/
+**/target/
+
+# --- RISC Zero ---
+*.risc0/
+.risc0/
+
+# --- Node / misc ---
+node_modules/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Demo server runtime data ---
+*.sqlite
+*.sqlite3
+*.db
+server-data/
+public-evidence/
+!docs/public-evidence-spec/
