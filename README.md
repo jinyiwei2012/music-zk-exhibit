@@ -8,10 +8,11 @@
 
 | 文档 | 内容 |
 |---|---|
+| [AGENTS.md](AGENTS.md) | **执行入口**:红线、冻结常量、阶段门禁、逐任务清单——AI agent 拿到仓库从这份开始 |
 | [PRD.md](PRD.md) | 产品需求:目标、非目标、时间线、页面文案边界、验收标准 |
 | [SPEC.md](SPEC.md) | 技术规格:协议、MIDI Profile、合成器、日志、API、测试与里程碑 |
 | [ZKP_EXPLAINED.md](ZKP_EXPLAINED.md) | 通俗解释:零知识证明的动机、思想与能力边界 |
-| [docs/PLAN.md](docs/PLAN.md) | 实施计划:怎么做这个软件,按里程碑的落地顺序与风险 |
+| [docs/PLAN.md](docs/PLAN.md) | 实施计划:落地顺序、Windows 兼容与降级路径、风险 |
 
 ## 状态
 
