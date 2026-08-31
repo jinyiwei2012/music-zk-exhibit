@@ -26,6 +26,7 @@ target/
 
 # --- Node / misc ---
 node_modules/
+.omo/
 .DS_Store
 Thumbs.db
 desktop.ini
