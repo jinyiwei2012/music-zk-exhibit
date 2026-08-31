@@ -95,7 +95,34 @@ Phase 1 通过后,C 线(日志/签名/API)不依赖证明性能,可以和 Phase 
 | 证明含义被夸大 | 文案来自 PRD 固定字符串,代码里作为常量渲染,不自由发挥 |
 | RISC Zero 版本漂移/安全公告 | 全链路锁版本;公告触发新 manifest,不悄悄换 Image ID |
 
-## 6. 下一步(具体到命令)
+## 6. Windows 兼容策略
+
+结论:可以兼容,但要按角色分层。"生成证明"是唯一真正依赖 Linux 的环节;WSL2 本身是 Windows 第一方组件,所以 v1 的官方口径是——**prove 环节运行在 WSL2 内,其余全部原生 Windows**。原生 Windows prover 只做一次性实验,用实测数据回答 PRD §16 的开放项,不作为 v1 承诺。
+
+### 6.1 角色 × Windows 需求矩阵
+
+| 角色 | Windows 兼容方式 |
+|---|---|
+| 普通质疑者 | 浏览器 + 证据包,零依赖,天然兼容 |
+| 技术质疑者 | 原生 Windows `verify.exe`:risc0 的 verify 路径是纯 Rust,交叉编译 `x86_64-pc-windows-msvc` 应可行,需在 CI 实测确认 |
+| 展示者/创作者(非 prove 环节) | 原生 Python 3.12 venv:CLI、FastAPI、SQLite 日志、网页全部跨平台 |
+| 创作者(prove 环节) | WSL2 内运行 Rust prover;Windows CLI 自动检测并透明委托 |
+
+### 6.2 四项落地工作
+
+1. **`scripts/setup-wsl.ps1`**:一键引导——检测/安装 WSL2 + Ubuntu、rustup、rzup,构建 guest,把实测版本号写入 `docs/ENV.md`。
+2. **CLI 透明委托**:`music-zk prove` 在 Windows 上检测 `wsl.exe`,用 `wslpath` 转换路径,经 `wsl -e` 调用 WSL 内的 prover。秘密文件始终留在本机磁盘,经 WSL 互操作文件系统(`/mnt/c`)读取,不经过任何网络,与"proving 断网"的隐私要求一致。用户感知就是一个原生 Windows CLI。
+3. **原生 Windows 验证器**:verifier CLI 以 verify-only feature 编译 Windows 目标,进 GitHub Actions `windows-latest` CI;同一 runner 上跑 `reference-core` golden vectors,顺带证明合成输出跨平台逐字节一致(整数运算 + 共享 Rust core 本身就保证了这一点,CI 只是把它钉死)。
+4. **一次性实验(timebox 1–2 天)**:在 `windows-latest` 上尝试编译 risc0-zkvm 的 prove feature。成功 → 文档标注"实验性原生 Windows proving";失败 → 以实测数据关闭 PRD §16 的"Windows 是否只通过 WSL2 支持"开放项。
+
+### 6.3 边界与不做的事
+
+- WSL1 不可用,必须 WSL2(工具链与文件系统语义)。
+- 私密目录权限:Windows 没有 POSIX 权限位,用用户目录 + ACL(`icacls` 或 API)近似 SPEC §10.1 的"仅当前用户可读",README 说明差异。
+- **禁止**用远程 prover 给 Windows 用户兜底——PRD §13.2 隐私红线,远程 prover 看得见 witness。
+- 不为 Windows 换技术栈:SP1 无零知识性,手写 halo2 电路等价于推翻重来,均非 v1 选项。
+
+## 7. 下一步(具体到命令)
 
 ```bash
 # 1. WSL2 内

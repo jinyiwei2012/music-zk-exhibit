@@ -19,7 +19,7 @@ Draft v0.1 · 规划阶段,尚无实现代码。
 
 ## 环境要求(规划中)
 
-- 本地 proving 需 Linux(x86-64)或 macOS(arm64);Windows 开发机使用 WSL2
+- 本地 proving 需 Linux(x86-64)或 macOS(arm64);Windows 经 WSL2(第一方组件)运行 prove 环节,CLI 自动委托,其余部分原生 Windows;详见 [docs/PLAN.md §6](docs/PLAN.md)
 - Python 3.12+(CLI / FastAPI 服务)
 - Rust stable(共享 reference-core、zkVM guest/host)
 - RISC Zero zkVM(版本在实施时固定,不得跟随 latest)
