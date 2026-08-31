@@ -26,7 +26,7 @@
 ## 2. 本机环境事实(2026-08-31 实测)
 
 - Windows(build 10.0.28120),Git Bash;git 2.55.0
-- Python 3.14.6 ← **必须用 uv/pyenv 钉住 3.12**,不要为 3.14 适配
+- 系统全局 Python 3.14.6(**不使用**)← 项目环境用 conda:`conda create -n music-zk python=3.12 -y`;每次开工先 `conda activate music-zk`,所有 Python 工作(CLI/server/verifier/tests)都在该环境内
 - Rust 1.97.1 / cargo 1.97.1(WSL 内需另装)
 - WSL 可用 ← Rust/zkVM 全部工作在 WSL2 内进行
 - 仓库已存在:`main` 分支,仅文档;`.gitignore` 已覆盖私密与构建产物
@@ -204,7 +204,7 @@ prove 走 WSL2(第一方组件)+ CLI 自动委托;其余全部原生 Windows;原
 ## 9. 当前状态与你的第一步
 
 - 仓库:`main`,HEAD 含 PRD/SPEC/ZKP_EXPLAINED/README/PLAN/.gitignore,无任何代码
-- 环境:§2 所列;WSL2 内尚未安装 Rust/RISC Zero
+- 环境:§2 所列;conda env `music-zk`(Python 3.12.14)已创建;WSL2 内尚未安装 Rust/RISC Zero
 
 **第一步(现在就做)**:
 

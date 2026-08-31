@@ -21,7 +21,7 @@ SPEC §20 已给出关键指令:**M0/M1 先做,基准门不过就砍范围,不�
 1. **证明环境 = WSL2 Ubuntu(x86-64)**。RISC Zero 官方预构建只支持 x86-64 Linux / arm64 macOS;本机已确认 WSL 可用。所有 Rust/zkVM 构建在 WSL2 内进行,Windows 侧只跑编辑器和浏览器。
 2. **锁版本**:RISC Zero 安装后立即固定 `cargo-risczero` 版本、Rust toolchain(rust-toolchain.toml)、Cargo.lock,guest ELF 的 Image ID 记入 protocol manifest。**永不自动升级**(SPEC §2.1、§17.5)。
 
-已知偏差:本机 Python 是 3.14,SPEC 写 3.12。用 `uv`/`pyenv` 在项目 venv 里钉住 3.12 即可,不为 3.14 做适配。
+已知偏差:本机系统 Python 是 3.14,SPEC 写 3.12。项目 Python 环境用 conda 创建:`conda create -n music-zk python=3.12 -y`,开工前 `conda activate music-zk`;不使用系统 3.14,也不为它做适配。
 
 ## 3. 里程碑与顺序(带验收动作)
 
