@@ -7,6 +7,7 @@ name = "music-zk"
 version = "0.1.0"
 description = "Music-ZK Exhibit —— 非AI音乐的零知识证明(概念展品):验证私有 MIDI 承诺打开与参考合成对应"
 requires-python = ">=3.12"
+license = { text = "MIT OR Apache-2.0" }
 dependencies = []
 
 [project.optional-dependencies]
