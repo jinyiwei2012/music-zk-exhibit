@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["reference-core", "reference-native", "zkvm-methods", "zkvm-host"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+# Always optimize; building and running the guest takes much longer without optimization.
+[profile.dev]
+opt-level = 3
+
+[profile.release]
+debug = 1
+lto = true
