@@ -113,7 +113,29 @@ Phase 1 通过后,C 线(日志/签名/API)不依赖证明性能,可以和 Phase 
 1. **`scripts/setup-wsl.ps1`**:一键引导——检测/安装 WSL2 + Ubuntu、rustup、rzup,构建 guest,把实测版本号写入 `docs/ENV.md`。
 2. **CLI 透明委托**:`music-zk prove` 在 Windows 上检测 `wsl.exe`,用 `wslpath` 转换路径,经 `wsl -e` 调用 WSL 内的 prover。秘密文件始终留在本机磁盘,经 WSL 互操作文件系统(`/mnt/c`)读取,不经过任何网络,与"proving 断网"的隐私要求一致。用户感知就是一个原生 Windows CLI。
 3. **原生 Windows 验证器**:verifier CLI 以 verify-only feature 编译 Windows 目标,进 GitHub Actions `windows-latest` CI;同一 runner 上跑 `reference-core` golden vectors,顺带证明合成输出跨平台逐字节一致(整数运算 + 共享 Rust core 本身就保证了这一点,CI 只是把它钉死)。
-4. **一次性实验(timebox 1–2 天)**:在 `windows-latest` 上尝试编译 risc0-zkvm 的 prove feature。成功 → 文档标注"实验性原生 Windows proving";失败 → 以实测数据关闭 PRD §16 的"Windows 是否只通过 WSL2 支持"开放项。
+4. **原生 Windows prover 实验(升级为正式路径,timebox 1–2 天)**:在 `windows-latest` 上尝试编译 risc0-zkvm 的 prove feature。前置改造:**guest ELF 预构建入库**(`protocol/guest-v1.elf`,Image ID 写入 manifest,CI 在 Linux 重建并核对)——这样 prove 端只加载 ELF 文件,Windows 机器完全不需要 rzup/客户工具链。成功 → Windows 无需 WSL 即可证明;失败 → 降级路径见 §6.4。
+
+### 6.4 绕开 WSL 的降级路径(老电脑 / 无法启用虚拟化)
+
+前提判断:老电脑的真实瓶颈是**证明资源**(RAM、CPU),不是操作系统本身。资源阶梯:
+
+| 任务 | 资源需求 | 老电脑可行性 |
+|---|---|---|
+| 浏览网页、播放 S/V | 极低 | 无条件可行 |
+| 离线验证证据包 | <10 秒、低内存 | 几乎任何 x64 电脑可行 |
+| 本地生成真实证明 | 8–16 GB RAM + 现代 CPU | 取决于硬件,与 OS 无关 |
+
+在此前提下,无法启用 WSL 的机器按序走:
+
+1. **原生 Windows prover**(§6.2 第 4 项成功时):不需要任何虚拟化,瓶颈只剩内存;内存不足就按 SPEC §18 缩短音频(5–15 秒)或调低 segment size limit。
+2. **Linux Live USB 兜底**(不依赖虚拟化、不装系统、不动硬盘):把 prover 以静态链接 Linux 二进制发布,创作者从 U 盘启动 Ubuntu live,完全离线生成证明后拷回结果。比 WSL2 兼容面更宽(只需 64 位 CPU,不需要 VT-x、不需要 Win10 1903+),且天然满足"proving 断网"。配套 `docs/LIVE-USB.md` + 构建脚本。
+3. **证明/验证分离的演示模式**:证明是**一次性的公开数据**——receipt、journal、证据包都可以在任何一台有能力的机器上生成,然后搬运到老电脑上做展示。老电脑只跑原生验证器(秒级、低内存),密码学强度不打折,完全符合产品语义(验证者本来就不需要证明能力)。
+
+明确不可行 / 不做的路:
+- 远程 prover 兜底:PRD §13.2 隐私红线,远程看得见 witness。
+- TEE(SGX/TDX)或 MPC 证明:超出 v1 威胁模型,列为未来方向。
+- QEMU 纯软件模拟(无 VT-x 跑 Linux):可行但慢一个数量级,30 秒工作负载不现实,不提供。
+- 为兼容性更换 zk 技术栈(纯 Rust 电路如 halo2/Winterfell 需手写电路,等于重写)。
 
 ### 6.3 边界与不做的事
 
