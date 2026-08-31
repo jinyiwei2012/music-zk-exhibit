@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "music-zk"
+version = "0.1.0"
+description = "Music-ZK Exhibit —— 非AI音乐的零知识证明(概念展品):验证私有 MIDI 承诺打开与参考合成对应"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["music_zk*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
