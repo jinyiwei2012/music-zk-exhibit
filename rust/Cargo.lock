@@ -2115,6 +2115,10 @@ dependencies = [
 [[package]]
 name = "reference-core"
 version = "0.1.0"
+dependencies = [
+ "hex",
+ "sha2",
+]
 
 [[package]]
 name = "reference-native"
@@ -3641,9 +3645,9 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "hex",
+ "reference-core",
  "risc0-zkvm",
  "serde",
- "sha2",
  "zkvm-methods",
 ]
 

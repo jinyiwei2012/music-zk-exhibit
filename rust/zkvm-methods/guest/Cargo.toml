@@ -6,5 +6,5 @@ edition = "2021"
 [workspace]
 
 [dependencies]
+reference-core = { path = "../../reference-core" }
 risc0-zkvm = { version = "^3.0.6", default-features = false, features = ['std'] }
-sha2 = "0.10"

@@ -937,6 +937,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "reference-core"
+version = "0.1.0"
+dependencies = [
+ "sha2",
+]
+
+[[package]]
 name = "risc0-binfmt"
 version = "3.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1473,6 +1480,6 @@ dependencies = [
 name = "zkvm-guest"
 version = "0.1.0"
 dependencies = [
+ "reference-core",
  "risc0-zkvm",
- "sha2",
 ]

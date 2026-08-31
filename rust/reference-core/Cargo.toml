@@ -2,3 +2,9 @@
 name = "reference-core"
 version.workspace = true
 edition.workspace = true
+
+[dependencies]
+sha2 = "0.10"
+
+[dev-dependencies]
+hex = "0.4"
