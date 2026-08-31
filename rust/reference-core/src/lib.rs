@@ -1,8 +1,15 @@
 //! reference-core —— MIDI 语义 + ReferenceSynth 合成 + hash framing 的唯一实现。
 //!
 //! native 与 zkVM guest 共用,协议行为以本 crate 为准(SPEC §4)。
-//! Phase 1(本阶段):SPEC §7 三个 framing + §6.4 journal 编解码。
-//! Phase 2 补齐:MIDI Profile 1 解析(§8)、ReferenceSynth 1(§9)。
+//! Phase 1:SPEC §7 三个 framing + §6.4 journal 编解码。
+//! Phase 2:MIDI Profile 1 解析(§8)、ReferenceSynth 1(§9)。
+
+pub mod midi;
+mod phase_steps;
+mod synth;
+
+pub use midi::{parse_midi, NoteEvent, ParsedMidi, ParseError};
+pub use synth::{render, render_stream, SynthParams, SAMPLE_RATE};
 
 use sha2::{Digest, Sha256};
 
