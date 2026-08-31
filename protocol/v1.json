@@ -1,0 +1,41 @@
+{
+  "manifest_version": 1,
+  "protocol_id": "music-zk-exhibit/midi-profile-1/reference-synth-1/statement-1",
+  "phase": "m0",
+  "hash_framing": {
+    "version": "v1",
+    "length_prefix": "U64BE",
+    "salt_len": 32,
+    "domains": ["MIDI-COMMIT", "REF-WAV", "SONG"]
+  },
+  "journal": {
+    "len": 202,
+    "magic": "MZKJNL01",
+    "statement_version": 1
+  },
+  "midi_profile": {
+    "id": "midi-profile-1",
+    "implementation_status": "m0 placeholder,Phase 2 实现并冻结参数",
+    "params": null
+  },
+  "reference_synth": {
+    "id": "reference-synth-1",
+    "implementation_status": "m0 placeholder,Phase 2 实现并冻结参数",
+    "wavetable_sha256": null,
+    "params": null
+  },
+  "guest": {
+    "source_commit": "a74c64870276eb5cb1f2f83f29ba505a00576c92",
+    "elf_sha256": "b118e73f32c8e5338babdf981ecb8ba14efa877cc3fb088d6659a4571b85ebbf",
+    "image_id": "f75836df6efa7464738a9c19119b1e7aeebb7e97cd2e0520b627bfeb1b662045",
+    "image_id_encoding": "hex of 32 bytes (big-endian per 4-byte word)",
+    "rust_toolchain": "risc0-1.97.0 (rustc 1.97.0-dev e638c6cfe)",
+    "cargo_version": "1.98.0",
+    "risc0_version": "3.0.6",
+    "receipt_type": "risc0 receipt v3,default_prover 输出(dev mode 禁用)",
+    "dev_mode": false
+  },
+  "canonical_wav": {
+    "version": "v1"
+  }
+}
