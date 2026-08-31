@@ -26,7 +26,7 @@
 ## 2. 本机环境事实(2026-08-31 实测)
 
 - Windows(build 10.0.28120),Git Bash;git 2.55.0
-- 系统全局 Python 3.14.6(**不使用**)← 项目环境用 conda:`conda create -n music-zk python=3.12 -y`;每次开工先 `conda activate music-zk`,所有 Python 工作(CLI/server/verifier/tests)都在该环境内
+- 系统全局 Python 3.14.6(**不使用**)← 项目环境用 conda:`music-zk`(Python 3.12)。**用户可能在启动 agent 前已手动激活**,agent 必须先按 §8 第一条自检当前是否处于虚拟环境再行动;所有 Python 工作(CLI/server/verifier/tests)都必须在 `music-zk` 内
 - Rust 1.97.1 / cargo 1.97.1(WSL 内需另装)
 - WSL 可用 ← Rust/zkVM 全部工作在 WSL2 内进行
 - 仓库已存在:`main` 分支,仅文档;`.gitignore` 已覆盖私密与构建产物
@@ -196,6 +196,10 @@ prove 走 WSL2(第一方组件)+ CLI 自动委托;其余全部原生 Windows;原
 
 ## 8. 工作约定
 
+- **Python 环境自检(每个会话开始、执行任何 Python/pip/pytest 命令之前)**:用户可能已在启动 agent 前手动激活 conda 环境,不得假设当前解释器。看事实不看提示符:`echo "$CONDA_DEFAULT_ENV|$VIRTUAL_ENV"` + `python -c "import sys; print(sys.executable)"`。三种情形:
+  - ① 已在 `music-zk`(`sys.executable` 路径含 `envs\music-zk`)→ 直接使用,不要重复激活;
+  - ② 处于**其他** venv/conda 环境 → 不切换、不污染该环境,单命令改用 `conda run -n music-zk ...`,并在汇报中说明;
+  - ③ 未激活任何环境 → 同样用 `conda run -n music-zk ...`(agent 的 shell 环境变量可能不跨命令持久,`conda run` 最可靠)。
 - 一个任务一个 commit;消息中文祈使句,如 `feat(reference-core): 实现 CommitMidi framing`
 - 环境版本 → `docs/ENV.md`;所有基准数字 → `docs/benchmarks.md`;冲突与未定义点 → `docs/OPEN-QUESTIONS.md`(不许静默自创参数)
 - 估算可疑时先写 microbenchmark 再写功能(SPEC §18 精神)
