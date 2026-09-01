@@ -22,7 +22,7 @@ import os
 import sys
 from pathlib import Path
 
-from . import flow, prove as prove_mod
+from . import demo, flow, prove as prove_mod
 
 
 def _secret_arg(p: str | None) -> str:
@@ -70,14 +70,30 @@ def main(argv: list[str] | None = None) -> int:
     p_server.add_argument("--data", default="server-data")
     p_server.add_argument("--port", type=int, default=8000)
 
-    p_verify = sub.add_parser("verify", help="验证公开证据包(Phase 4)")
+    p_verify = sub.add_parser("verify", help="验证公开证据包(SPEC §15 十一项)")
     p_verify.add_argument("evidence_dir", type=Path)
-    p_verify.add_argument("--server-key", default=None, help="服务端公钥(信任根)")
+    p_verify.add_argument("--server-key", required=True, help="服务端公钥(信任根,32 字节 hex)")
+    p_verify.add_argument("--verify-bin", default=None, help="覆盖 zkvm-verify 路径(测试用)")
+    p_verify.add_argument("--expect-image-id", default=None, help="覆盖冻结 Image ID(负向测试)")
 
-    p_reveal = sub.add_parser("reveal-check", help="reveal 检查(Phase 4)")
+    p_reveal = sub.add_parser("reveal-check", help="reveal:验证 (midi, salt) 打开 t0 承诺")
     p_reveal.add_argument("midi", type=Path)
     p_reveal.add_argument("salt", type=Path)
     p_reveal.add_argument("commit_receipt", type=Path)
+
+    p_evidence = sub.add_parser("evidence", help="公开证据包导出(SPEC §12.2)")
+    p_evidence.add_argument("action", choices=["export"])
+    p_evidence.add_argument("--secret", default="creator-secret")
+    p_evidence.add_argument("--work", default="proof-work")
+    p_evidence.add_argument("--server", required=True)
+    p_evidence.add_argument("--song", required=True, help="公开歌曲 S 的本地文件")
+    p_evidence.add_argument("--out", default="public-evidence")
+
+    p_demo = sub.add_parser("demo", help="篡改演示(SPEC §17.3 精神)")
+    p_demo.add_argument("action", choices=["tamper"])
+    p_demo.add_argument("--case", choices=demo.TAMPER_CASES, required=True)
+    p_demo.add_argument("--evidence", type=Path, required=True)
+    p_demo.add_argument("--secret", default=None, help="midi-byte/salt 案例需要 creator-secret")
 
     args = parser.parse_args(argv)
     try:
@@ -142,12 +158,35 @@ def _dispatch(args: argparse.Namespace) -> int:
         return _server_dispatch(args)
 
     if args.cmd == "verify":
-        print(f"verify 属 Phase 4(SPEC §15 十一项逐步输出);当前尚未实现: {args.evidence_dir}")
-        return 2
+        from music_zk.verifier.evidence import EvidenceVerifier
+
+        verifier = EvidenceVerifier(
+            args.evidence_dir,
+            args.server_key,
+            verify_bin=args.verify_bin,
+            expect_image_id=args.expect_image_id,
+        )
+        res = verifier.verify()
+        print(res.render())
+        return 0 if res.overall else 1
 
     if args.cmd == "reveal-check":
-        print("reveal-check 属 Phase 4;当前尚未实现。")
-        return 2
+        print(demo.reveal_check(args.midi, args.salt, args.commit_receipt))
+        return 0
+
+    if args.cmd == "evidence" and args.action == "export":
+        from .evidence import export_evidence
+
+        out = export_evidence(
+            args.secret, args.work, args.server, args.song, args.out
+        )
+        print(f"公开证据包已导出: {out}")
+        print("验证: music-zk verify public-evidence/ --server-key <服务端公钥 hex>")
+        return 0
+
+    if args.cmd == "demo" and args.action == "tamper":
+        print(demo.run_tamper(args.case, args.evidence, args.secret))
+        return 0
 
     print(f"未知子命令: {args.cmd}", file=sys.stderr)
     return 2

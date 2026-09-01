@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import FastAPI, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from music_zk.protocol.log import verify_sth
 from music_zk.protocol.signing import verify_event_signature
@@ -338,6 +338,60 @@ def create_app(
             ],
             "sth": _sth_payload(store.latest_sth()) if store.latest_sth() else None,
         }
+
+    # ---------- 展示页与音频(Phase 4,PRD §11) ----------
+
+    def _claim_or_404(claim_id: str):
+        commit = store.event_by_id(claim_id)
+        if commit is None or commit.event_type != "COMMIT":
+            raise HTTPException(404, f"claim 不存在: {claim_id}")
+        return commit
+
+    def _claim_json(claim_id: str) -> dict[str, Any]:
+        commit = store.event_by_id(claim_id)
+        chain = [ev for ev in store.events() if ev.creator_pubkey == commit.creator_pubkey]
+        return {
+            "claim_id": claim_id,
+            "creator_pubkey": commit.creator_pubkey,
+            "events": [
+                {"sequence": ev.sequence, "event_type": ev.event_type,
+                 "event_id": ev.event_id, "record": ev.record}
+                for ev in chain
+            ],
+            "sth": _sth_payload(store.latest_sth()) if store.latest_sth() else None,
+        }
+
+    @app.get("/claim/{claim_id}")
+    def claim_page(claim_id: str) -> HTMLResponse:
+        _claim_or_404(claim_id)
+        from music_zk.web.pages import result_page
+
+        return HTMLResponse(result_page(_claim_json(claim_id)))
+
+    @app.get("/claim/{claim_id}/tech")
+    def tech_page(claim_id: str) -> HTMLResponse:
+        _claim_or_404(claim_id)
+        from music_zk.web.pages import tech_page as render_tech
+
+        claim = _claim_json(claim_id)
+        return HTMLResponse(render_tech(claim, claim.get("sth")))
+
+    def _serve_file(claim_id: str, kind: str, filename: str) -> FileResponse:
+        commit = store.event_by_id(claim_id)
+        if commit is None:
+            raise HTTPException(404, f"claim 不存在: {claim_id}")
+        path = store.file_path(claim_id, kind)
+        if path is None or not path.exists():
+            raise HTTPException(404, f"该 claim 没有 {kind} 文件")
+        return FileResponse(path, media_type="audio/wav", filename=filename)
+
+    @app.get("/api/v1/claims/{claim_id}/song")
+    def claim_song(claim_id: str) -> FileResponse:
+        return _serve_file(claim_id, "song", "song-S.wav")
+
+    @app.get("/api/v1/claims/{claim_id}/reference-v")
+    def claim_v(claim_id: str) -> FileResponse:
+        return _serve_file(claim_id, "v", "reference-V.wav")
 
     @app.get("/api/v1/claims/{claim_id}/evidence.zip")
     def evidence_zip(claim_id: str) -> FileResponse:
