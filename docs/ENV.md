@@ -38,6 +38,8 @@
 - **CUDA 13.2 是硬性要求**:CUDA 12.4 的 nvcc 内置 cudafe++ 无法解析 VS Build Tools 2026(VC 14.51)的 MSVC 18 头文件(0xC0000409 崩溃),CUDA 13.2 起官方支持 VS 2026;同时驱动须 ≥580(12.4 捆绑驱动 551.78 会被 cudafe++ 报错,已升 616.56)。
 - **guest 构建仍只在 WSL**(risc0 工具链无 Windows 二进制;rzup 硬性不可用),产物 R0BF 入库 `protocol/guest-v1.elf`。
 - 构建前置:`powershell` 里 `. .\scripts\env-win.ps1`(导入 vcvars64 环境 + `CXXFLAGS=/std:c++20 /DNOMINMAX` + CUDA_PATH),再 `cargo +stable-x86_64-pc-windows-msvc build`。
+- **构建产物位置**:`rust/.cargo/config.toml` 的 `[build] target-dir = "C:/music-zk-target"`(仓库路径含 CJK,cl.exe LINK 对非 ASCII 路径编码错乱 LNK1104)。**一切脚本/手工跑 exe 都用 `C:\music-zk-target\debug\` 下的二进制**;`rust\target\debug\` 下是迁移前的旧拷贝(不认 `--segment-po2`,勿用)。
+- **内存限制(蓝屏防护,2026-09-01)**:`zkvm-prove --segment-po2 18 --keccak-po2 18` + `RAYON_NUM_THREADS` 默认 ≤8。默认 segment po2=20 时单 segment GPU 缓冲按 2^20 行分配,8 GB 显存卡真实负载(B1 15s/4v)被单 segment 缓冲打爆蓝屏;po2=18 使峰值显存稳定 ~4.3 GB(实测 B1/B2/B3 一致)。限制与耗时权衡见 benchmarks.md B1/B2/B3 节。
 - **栈溢出规避**(risc0 C++ poly_fp 深递归巨帧):代码内 `rayon::ThreadPoolBuilder::stack_size(64MiB).build_global()` + `rust/.cargo/config.toml` 的 `/STACK:0x4000000` + `RUST_MIN_STACK=64MiB`。
 - **image_id 字节序陷阱**:`receipt.verify()` 的 image_id 必须用 `[u8;32]` 大端字节构造 `Digest`(`[u32;8].into()` 走 word 直拷,字节序不同会误报 ClaimDigestMismatch)。记录于 OPEN-QUESTIONS。
 - **CJK 仓库路径**("非AI音乐的零知识证明")对 CUDA 工具链是硬伤:nvcc 的 cudafe++ 无法解析非 ASCII include 路径(C1083),且 cargo canonicalize 掉 subst 盘符。解法:vendor patch 的 sppark/risc0-sys build.rs 在 Windows+非 ASCII 路径下把 C++ 源码树镜像到 `OUT_DIR`(ASCII)并输出 ASCII 版 ROOT。
