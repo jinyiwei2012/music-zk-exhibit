@@ -63,6 +63,25 @@
 
 > **与 WSL 对比**:WSL CPU 9.30 s / 606 MiB;Win 原生 CPU 106–120 s——**慢一个数量级**(多核并行度/调度差异),门禁仍绿。CUDA 路径基准待 `cuda` feature 构建验证后补录。
 
+## B0 — 5s/1v 展品负载(SPEC §18 B0:验证 receipt/Image ID/内存测量链的最小展品负载)
+
+| 项 | 值 |
+|----|----|
+| 日期 | 2026-09-01 |
+| 机器 | Windows 10.0.28120 原生(MSVC);Intel Core Ultra 9 185H;RTX 4060 Laptop 8GB(**CUDA 路径**) |
+| 负载 | 单音 On@tick0、Off@4800(5 s,480 PPQ);MIDI 42 B(`protocol/bench-midis/b0-5s-1v.mid`) |
+| 构建 | `cargo +stable-x86_64-pc-windows-msvc` dev profile(opt-level=3)+ `cuda`;risc0-zkvm 3.0.6;CUDA 13.2;驱动 616.56 |
+| **内存限制** | `--segment-po2 18`、`--keccak-po2 18`、`RAYON_NUM_THREADS≤8` |
+| 证明耗时 | **87.1 s**(wall,CUDA) |
+| 峰值显存 | **4595 MiB** |
+| 峰值 prover 内存 | 389.7 MiB |
+| 系统空闲 RAM 最低 | 1877 MiB |
+| guest 统计 | total 20,185,088 / user 16,861,609 / **77 segments** |
+| receipt 大小 | 19,700,358 B(≈18.8 MiB;composite STARK) |
+| 独立验证 | `zkvm-verify` 通过,**2.64 s** |
+| Image ID | `5e06801b...`(与 manifest 一致) |
+| C_M / C_V | `191a8512...` / `4949079d...` |
+
 ## B1/B2/B3 — Phase 2 真实负载(statement-2 完整 guest,Win 原生 CUDA + 内存限制)
 
 | 项 | B1(15s/4v) | B2(30s/4v) | B3(60s/4v) |
@@ -77,13 +96,26 @@
 | 峰值 prover 内存 | 535.6 MiB | 896.8 MiB | 845.2 MiB |
 | 系统空闲 RAM 最低 | 5519 MiB | 4806 MiB | 4625 MiB |
 | guest 统计 | total 154,730,496 / user 129,631,593 / **591 segments** | total 308,084,736 / user 258,178,963 / **1176 segments** | total 614,989,824 / user 515,410,631 / **2346 segments** |
-| receipt 大小 | 151,168,394 B(≈144 MiB) | 300,835,964 B(≈287 MiB) | 600,205,856 B(≈572 MiB) |
+| receipt 大小 | 151,168,394 B(≈144 MiB,composite STARK) | 300,835,964 B(≈287 MiB,composite STARK) | 600,205,856 B(≈572 MiB,composite STARK) |
+| 独立验证 | `zkvm-verify` 通过,**18.99 s** | 通过,**38.16 s** | 通过,**107.41 s** |
 | 独立验证 | `zkvm-verify` 通过(C_M/C_V 绑定一致) | 通过 | 通过 |
 | Image ID | `5e06801b...`(与 manifest 一致) | 同左 | 同左 |
 | C_M | `e87a055e...` | `9381ae4e...` | `9bd55634...` |
 | C_V | `fc7d96fd...` | `b2c0b2e1...` | `a40cb7e6...` |
 
 **门禁**:SPEC §18「30 秒负载 ≤ 60 分钟真实证明」→ B2 = 21.2 min **达标**;峰值显存 ≤ 4.4 GB(8 GB 卡安全),prover 内存 < 1 GB,**全程零蓝屏**。
+
+## PRD §13.3 目标 vs 实测(诚实记录,不达标即公开)
+
+| §13.3 指标 | 目标 | 实测(本机) | 达标 |
+|---|---|---|---|
+| 60 s 负载证明生成 | ≤ 30 min | B3 = 42.4 min | **✗ 未达**(目标线,非门禁) |
+| 峰值内存 | ≤ 6 GB | prover 峰值 < 1 GB(显存 4.3 GB 单独记账) | ✓ |
+| receipt | ≤ 10 MB | B3 ≈ 572 MiB(composite STARK) | **✗ 未达**(目标线;v1 按 SPEC §18 策略 1 用 composite,succinct 可降但未启用) |
+| 验证 | ≤ 10 s | B3 = 107 s | **✗ 未达**(目标线) |
+| **最低实验基线:30 s 负载 ≤ 60 min 真实证明** | 60 min | B2 = 21.2 min | **✓ 门禁达标** |
+
+> §13.3 的门禁是最低实验基线(30 s ≤ 60 min),已达标;60 s 负载的 prove/receipt/verify 三项为**目标指标**,未达标已如实公开,不构成验收失败,也不得用 dev-mode/远程证明替代后声称满足。
 
 > **蓝屏根因(2026-09-01 实测推论)**:默认 `segment_limit_po2=20` 时单 segment 的 GPU 缓冲按 2^20 行分配,8 GB 显存机(实测约 7 GB 空闲)在真实负载下被单 segment 缓冲打爆 → 驱动级故障蓝屏。`--segment-po2 18` 使峰值显存稳定在 ~4.3 GB(三个负载一致,印证按 segment 计),代价是 segment 数 ×4、单 segment 固定开销放大:同负载 B1 在 po2=20 下估计 ≈4–5 min,po2=18 为 637 s。**内存限制与耗时是显式权衡,基准必须带限制参数记录。**
 > **执行注意**:构建产物在 `C:\music-zk-target\debug\`(`rust/.cargo/config.toml` target-dir 因 CJK 路径规避);`rust\target\debug\` 下是迁移前旧拷贝,勿用。

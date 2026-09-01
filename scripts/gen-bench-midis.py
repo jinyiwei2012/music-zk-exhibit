@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""生成 SPEC §18 性能基准负载 B1(15s/4v)、B2(30s/4v)、B3(60s/4v)。
+"""生成 SPEC §18 性能基准负载 B0(5s/1v)、B1(15s/4v)、B2(30s/4v)、B3(60s/4v)。
 
-4 个 voice 长音(同时活动 = 4,测合成器真实负载):
-  - B1: 4 音 On@tick0,Off@7200(15 s,480 PPQ)
-  - B2: 4 音 On@tick0,Off@14400(30 s)
-  - B3: 4 音 On@tick0,Off@28800(60 s)
+  - B0: 1 音 On@tick0,Off@4800(5 s,480 PPQ)——验证 receipt/Image ID/内存链的最小展品负载
+  - B1: 4 音 On@tick0,Off@14400(15 s,480 PPQ)
+  - B2: 4 音 On@tick0,Off@28800(30 s)
+  - B3: 4 音 On@tick0,Off@57600(60 s)
 全部符合 MIDI Profile 1(fail-closed):Format 0、单 MTrk、division 480、
 Set Tempo 500000 @ tick 0、Note On/Off 匹配、tick 单调、EOT 最后。
 """
@@ -51,10 +51,11 @@ def build(events: bytes) -> bytes:
     return header + track
 
 
-def four_voice_drone(duration_tick: int) -> bytes:
-    # 4 个 voice:低音区 45/57/64/69(C3/A3/E4/A4 邻接,note range 21..108 内,
-    # 不重叠音高避免 "same pitch 未 Off 不得再 On" 冲突)
-    notes = [45, 57, 64, 69]
+def four_voice_drone(duration_tick: int, notes: list[int] | None = None) -> bytes:
+    # 默认 4 个 voice:低音区 45/57/64/69(C3/A3/E4/A4 邻接,note range 21..108 内,
+    # 不重叠音高避免 "same pitch 未 Off 不得再 On" 冲突);B0 传单音列表
+    if notes is None:
+        notes = [45, 57, 64, 69]
     ev = TEMPO
     for n in notes:
         ev += on(0, n, 96)
@@ -68,14 +69,15 @@ def four_voice_drone(duration_tick: int) -> bytes:
 
 def main() -> None:
     # tempo 500000 us/quarter → 1 quarter = 0.5 s;480 PPQ → 1 s = 960 tick
-    # B1=15s→14400 tick,B2=30s→28800 tick,B3=60s→57600 tick(=Profile 1 上限)
-    cases = {
-        "b1-15s-4v": 15 * 960,      # 14400 tick = 15 s
-        "b2-30s-4v": 30 * 960,      # 28800 tick = 30 s
-        "b3-60s-4v": 60 * 960,      # 57600 tick = 60 s(Profile 1 上限)
+    # B0=5s→4800 tick(1 voice),B1=15s→14400 tick,B2=30s→28800 tick,B3=60s→57600 tick(=Profile 1 上限)
+    cases: dict[str, tuple[int, list[int]]] = {
+        "b0-5s-1v": (5 * 960, [60]),           # 4800 tick = 5 s,单音 1 voice
+        "b1-15s-4v": (15 * 960, [45, 57, 64, 69]),  # 14400 tick = 15 s
+        "b2-30s-4v": (30 * 960, [45, 57, 64, 69]),  # 28800 tick = 30 s
+        "b3-60s-4v": (60 * 960, [45, 57, 64, 69]),  # 57600 tick = 60 s(Profile 1 上限)
     }
-    for name, dur in cases.items():
-        data = four_voice_drone(dur)
+    for name, (dur, notes) in cases.items():
+        data = four_voice_drone(dur, notes)
         p = OUT / f"{name}.mid"
         p.write_bytes(data)
         print(f"{p.name:16s} {len(data):5d} B  dur={dur//960:3d}s  sha256={hashlib.sha256(data).hexdigest()}")
