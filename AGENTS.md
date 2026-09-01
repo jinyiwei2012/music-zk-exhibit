@@ -27,8 +27,8 @@
 
 - Windows(build 10.0.28120),Git Bash + PowerShell;git 2.55.0
 - 系统全局 Python 3.14.6(**不使用**)← 项目环境用 conda:`music-zk`(Python 3.12)。**用户可能在启动 agent 前已手动激活**,agent 必须先按 §8 第一条自检当前是否处于虚拟环境再行动;所有 Python 工作(CLI/server/verifier/tests)都必须在 `music-zk` 内
-- **Rust(Windows 原生)**:rustup 1.29.0,工具链 `stable-x86_64-pc-windows-msvc`(1.98.0);VS Build Tools 18(VC 14.51 + SDK 10.0.26100);CUDA Toolkit 12.4.1(与 WSL 侧一致);RTX 4060 8GB
-- **prove/verify 全部 Windows 原生**(CPU 1 正 4 负门禁绿;CUDA feature 已启用)。构建前 `. .\scripts\env-win.ps1`(见 docs/ENV.md)
+- **Rust(Windows 原生)**:rustup 1.29.0,工具链 `stable-x86_64-pc-windows-msvc`(1.98.0);VS Build Tools 18(VC 14.51 + SDK 10.0.26100);CUDA Toolkit **13.2**(12.4 的 cudafe++ 与 VS 2026 不兼容,已移除);NVIDIA 驱动 **616.56**(CUDA 13.x 需 ≥580);RTX 4060 8GB
+- **prove/verify 全部 Windows 原生**(CPU 1 正 4 负门禁绿;**CUDA 已验证**:statement-2 完整 guest 4.1 s vs CPU 106–120 s)。构建前 `. .\scripts\env-win.ps1`(见 docs/ENV.md)
 - **guest 构建仍只在 WSL**(risc0 工具链无 Windows 二进制;rzup 硬性不可用):`bash scripts/build-guest-wsl.sh` → 产物 R0BF 入库 `protocol/guest-v1.elf`
 - 仓库:`main` 分支;`.gitignore` 已覆盖私密与构建产物
 
@@ -213,6 +213,7 @@ scripts/
 - 仓库:`main`,HEAD 含 PRD/SPEC/ZKP_EXPLAINED/README/PLAN/.gitignore、Phase 0–1 代码(rust/ workspace)与 Win 原生迁移产物。
 - 环境:§2 所列;conda env `music-zk`(Python 3.12.14);**prove/verify 已迁 Windows 原生**(构建前置 `. .\scripts\env-win.ps1`);WSL2 仅用于 guest 构建(`bash scripts/build-guest-wsl.sh`),工具链版本与接线见 `docs/ENV.md`。
 - **Phase 1 = SPEC M0 已过门禁**(2026-09-01,Win 原生):真实证明(C_M=`0717cc99...`)CPU 106–120 s,独立 verifier 复验通过;1 正 + 3 负 + dev-mode 编译期硬禁(共 5 项)PASS=5/FAIL=0;数字见 `docs/benchmarks.md`。
+- **CUDA 路径已验证**(2026-09-01):statement-2 完整 guest(解析+合成+C_M/C_V 断言)**4.1 s**(vs CPU 106–120 s,约 27× 加速),独立 verifier 通过;CUDA 13.2 + 驱动 616.56(详见 docs/ENV.md)。
 - **protocol_id 已按 SPEC §5 升为 statement-2**(Phase 2 完整 guest 的 Image ID `5e06801b...`,见 `protocol/v1.json`)。
 
 **第一步(现在做)**:读 SPEC §8/§9,开始 Phase 2 = SPEC M1(reference-core 的 MIDI Profile 1 parser + ReferenceSynth 1 纯整数合成 → golden vectors ×6 → 基准 B1/B2)。Rust 构建在 Windows 原生进行;guest 改动后须在 WSL 重建 R0BF 并核对 Image ID 是否变化。

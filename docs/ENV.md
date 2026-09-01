@@ -28,17 +28,25 @@
 | cargo(msvc) | 1.98.0 | 2026-09-01 | `cargo +stable-x86_64-pc-windows-msvc --version` |
 | rustc(msvc) | 1.98.0 | 2026-09-01 | `rustc +stable-x86_64-pc-windows-msvc --version` |
 | MSVC(Build Tools 18) | VC Tools 14.51.36231 / SDK 10.0.26100 | 2026-09-01 | `vswhere -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64` |
-| CUDA Toolkit(Windows) | **12.4.1(V12.4.131,与 WSL 侧一致)** | 2026-09-01 | `nvcc --version`;安装路径 `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4` |
-| NVIDIA 驱动 | 610.88 / CUDA UMD 13.3 | 2026-08-31 | `nvidia-smi` |
+| CUDA Toolkit(Windows) | **13.2(V13.2.51,官方支持 VS 2026;12.4 的 cudafe++ 与 VS 18 不兼容已移除)** | 2026-09-01 | `nvcc --version`;安装路径 `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2` |
+| NVIDIA 驱动 | **616.56(≥580 才支持 CUDA 13.x;原 551.78 是 12.4 捆绑驱动)** | 2026-09-01 | `nvidia-smi` |
 | GPU | RTX 4060 Laptop 8GB + Intel Arc | 2026-08-31 | `nvidia-smi` |
 
 ## Windows 原生(2026-09-01 起,Win 原生迁移后的 build/prove 环境)
 
-- **prove/verify 全部 Windows 原生**(CPU 已验证 1 正 4 负;CUDA 路径启用 `cuda` feature)。
+- **prove/verify 全部 Windows 原生**(CPU 已验证 1 正 4 负;**CUDA 已验证**:statement-2 完整 guest 4.1 s vs CPU 106–120 s,约 27× 加速)。
+- **CUDA 13.2 是硬性要求**:CUDA 12.4 的 nvcc 内置 cudafe++ 无法解析 VS Build Tools 2026(VC 14.51)的 MSVC 18 头文件(0xC0000409 崩溃),CUDA 13.2 起官方支持 VS 2026;同时驱动须 ≥580(12.4 捆绑驱动 551.78 会被 cudafe++ 报错,已升 616.56)。
 - **guest 构建仍只在 WSL**(risc0 工具链无 Windows 二进制;rzup 硬性不可用),产物 R0BF 入库 `protocol/guest-v1.elf`。
 - 构建前置:`powershell` 里 `. .\scripts\env-win.ps1`(导入 vcvars64 环境 + `CXXFLAGS=/std:c++20 /DNOMINMAX` + CUDA_PATH),再 `cargo +stable-x86_64-pc-windows-msvc build`。
-- 栈溢出规避(risc0 C++ poly_fp 深递归巨帧):代码内 `rayon::ThreadPoolBuilder::stack_size(64MiB).build_global()` + `rust/.cargo/config.toml` 的 `/STACK:0x4000000` + `RUST_MIN_STACK=64MiB`。
+- **栈溢出规避**(risc0 C++ poly_fp 深递归巨帧):代码内 `rayon::ThreadPoolBuilder::stack_size(64MiB).build_global()` + `rust/.cargo/config.toml` 的 `/STACK:0x4000000` + `RUST_MIN_STACK=64MiB`。
 - **image_id 字节序陷阱**:`receipt.verify()` 的 image_id 必须用 `[u8;32]` 大端字节构造 `Digest`(`[u32;8].into()` 走 word 直拷,字节序不同会误报 ClaimDigestMismatch)。记录于 OPEN-QUESTIONS。
+- **CJK 仓库路径**("非AI音乐的零知识证明")对 CUDA 工具链是硬伤:nvcc 的 cudafe++ 无法解析非 ASCII include 路径(C1083),且 cargo canonicalize 掉 subst 盘符。解法:vendor patch 的 sppark/risc0-sys build.rs 在 Windows+非 ASCII 路径下把 C++ 源码树镜像到 `OUT_DIR`(ASCII)并输出 ASCII 版 ROOT。
+- **CUDA 编译的 MSVC 兼容 patch 链**(全部在 `rust/vendor/`,经 `[patch.crates-io]` 挂载,均只改 build 配置不改内核语义):
+  1. `sppark` build.rs:移除 `CXXFLAGS`(MSVC 风格 `/std:c++20` 经 `-Xcompiler` 传给 cl 触发 cudafe++ 崩溃)+ ASCII 镜像。
+  2. `risc0-build-kernel` compile_cuda:MSVC 门控 GNU 警告 flag + `-allow-unsupported-compiler` + `-std=c++17` + `-DTHRUST_DISABLE_ABI_NAMESPACE` + `-DCUB_DISABLE_NAMESPACE_MAGIC`(均需 paired `_IGNORE_` 宏,CUDA 13 的 `_SM_` 宏在 sm_89 展开破坏命名空间)+ force-include 系统 `cuda.h`(CCCL driver_api include 顺序)+ 移除 CXXFLAGS + `/utf-8`;compile_cpp:MSVC 用 `/std:c++20`(keccak CPU 内核用 designated initializer)+ `/DNOMINMAX`。
+  3. `risc0-sys` build.rs:ASCII 镜像 cxx/cuda 目录(分开,避免互相覆盖)+ `-include` `typedef unsigned int uint` 头(`-Duint=unsigned int` 会被 nvcc 按空格拆分报 "A single input file is required")。
+  4. `risc0-circuit-keccak-sys` / `risc0-circuit-rv32im-sys` build.rs:同 2 的 CUDA MSVC 修复(keccak 加 uint force-include)。
+  5. `risc0-zkvm` Cargo.toml:cuda feature 移除 `risc0-groth16/cuda`(其 CUDA 内核无条件 include POSIX `sys/mman.h`,Windows 无此头;本项目只用 STARK 收据,不需要 Groth16 GPU 加速)。
 - 构建时的 `RECURSION_SRC_PATH` 环境变量指向本地 `recursion_zkr.zip`(risc0-circuit-recursion 下载 S3 被代理损坏,手动下载校验 SHA256 通过;临时目录 `%TEMP%\opencode\recursion_zkr.zip`)。
 
 ## 工具链接线(WSL 侧 guest 构建,2026-08-31 手动安装;勿删,CI/新机器照此复现)
