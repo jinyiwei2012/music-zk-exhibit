@@ -132,16 +132,23 @@ fn main() {
         "protocol_hash 与 protocol_id 不匹配"
     );
 
-    // 4) C_M 重算对拍——负向:改 M 一字节 / 错盐在此失败
-    let midi = fs::read("midi.bin").expect("缺少 midi.bin");
-    let salt = fs::read("salt.bin").expect("缺少 salt.bin");
-    assert_eq!(salt.len(), SALT_LEN);
-    let salt_arr: [u8; SALT_LEN] = salt.try_into().unwrap();
-    let expect_c_m_local = commit_midi(&midi, &salt_arr);
-    assert_eq!(
-        journal.c_m, expect_c_m_local,
-        "C_M 与本地 (M,r) 重算不一致"
-    );
+    // 4) C_M 重算对拍——负向:改 M 一字节 / 错盐在此失败。
+    //    仅当本地存在 midi.bin + salt.bin 时执行(创作者本地验证用);
+    //    服务端 PROOF 校验必须无 witness(红线 1),此时跳过本步——密码学复验
+    //    (1) 与 C_M/C_V 绑定(5/6)已覆盖 journal 与承诺一致性。
+    if std::path::Path::new("midi.bin").exists() && std::path::Path::new("salt.bin").exists() {
+        let midi = fs::read("midi.bin").expect("缺少 midi.bin");
+        let salt = fs::read("salt.bin").expect("缺少 salt.bin");
+        assert_eq!(salt.len(), SALT_LEN);
+        let salt_arr: [u8; SALT_LEN] = salt.try_into().unwrap();
+        let expect_c_m_local = commit_midi(&midi, &salt_arr);
+        assert_eq!(
+            journal.c_m, expect_c_m_local,
+            "C_M 与本地 (M,r) 重算不一致"
+        );
+    } else {
+        eprintln!("note: 无 midi.bin/salt.bin,跳过 C_M 本地重算(服务端无 witness 模式)");
+    }
 
     // 5) 绑定先前提交的承诺(负向:用修改后的 M/salt 证明 → 与 t0 承诺不符 → 失败)
     if let Some(committed) = expect_c_m {

@@ -210,6 +210,7 @@ def proof_publish(
     服务端会本地跑标准 verifier 复验(SPEC §11.1)后才接受。
     """
     work_dir = Path(work_dir)
+    secret_dir = Path(secret_dir)
     secret = _read_secret(secret_dir)
     release = _load_json(secret_dir / RELEASE_RECEIPT, RELEASE_RECEIPT)
     v = (work_dir / "v.wav").read_bytes()
