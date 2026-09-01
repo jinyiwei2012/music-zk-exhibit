@@ -1,6 +1,18 @@
 [workspace]
 resolver = "2"
-members = ["reference-core", "reference-native", "zkvm-methods", "zkvm-host"]
+members = ["reference-core", "reference-native", "zkvm-methods", "zkvm-host", "tools/elf2r0bf"]
+
+# Windows 原生迁移补丁:
+# 1. risc0-circuit-keccak 4.0.6:build.rs 的 canonicalize 路径在 Windows 产生
+#    `\\?\C:\...`,直接写进 include_bytes! 字符串导致编译失败(反斜杠转义)。
+#    本地修复版见 rust/vendor/risc0-circuit-keccak(仅改 build.rs 路径显示逻辑,
+#    其余字节与 crates.io 4.0.6 一致)。
+# 2. risc0-zkvm 3.0.6:prove/default.rs(r0vm IPC prover)无条件编译但使用
+#    UnixStream/OwnedFd,Windows 编译失败。DefaultProver 仅 bonsai/actor 路径用,
+#    本地补上 #[cfg(feature = "bonsai")] gate。
+[patch.crates-io]
+risc0-circuit-keccak = { path = "vendor/risc0-circuit-keccak" }
+risc0-zkvm = { path = "vendor/risc0-zkvm" }
 
 [workspace.package]
 version = "0.1.0"

@@ -1,0 +1,11 @@
+# rust/.cargo/config.toml - Windows 原生构建配置
+#
+# /STACK:Windows 主线程栈默认仅 1 MiB(PE 头),而 risc0 CPU prover 的
+# zirgen C++ poly_fp 是 20~57 层深递归巨帧,主线程(也参与 rayon par_iter
+# 内联执行)会栈溢出。加大主线程栈 reserve 到 64 MiB。
+# (Linux/macOS 主线程 8 MiB 默认足够,无需配置)
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "link-arg=/STACK:0x4000000"]
+
+[target.x86_64-pc-windows-gnu]
+rustflags = ["-C", "link-arg=-Wl,--stack,67108864"]
