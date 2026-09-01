@@ -63,7 +63,9 @@ SPEC §20 已给出关键指令:**M0/M1 先做,基准门不过就砍范围,不�
 
 **验收/砍范围线**:30 秒工作负载 ≤ 60 分钟出真实证明。若 8 GB 机器不行:降 segment size limit;再不行:缩到 30 秒时长或降采样率——注意这会产生**新 protocol_id**,要在 manifest 里如实反映。16 GB 机器通过也算概念成立,但"8 GB 未达成"写进公开文档。
 
-### Phase 3 = SPEC M2:身份、日志、服务端(1–2 周)**← 当前阶段(2026-09-01 起)**
+### Phase 3 = SPEC M2:身份、日志、服务端(1–2 周)
+
+> ✅ **已完成(2026-09-01)**:`identity init`(Ed25519 + `creator-secret/` 原子创建)+ JCS(RFC 8785,Python `jcs` 包与 Rust `serde_jcs` 12 样本逐字节对拍)+ FastAPI/SQLite 三事件端点(签名/去重/引用顺序/字段黑名单/大小限制/两阶段发布)+ RFC 6962 Merkle 日志(Google CT 官方向量锁定)+ CLI 六步流程。**门禁:minimal-onenote 真实端到端 t0→t1→t2**(真实 CUDA 证明,服务端本地 verifier 复验),checkpoint + inclusion proof 独立实现(不 import music_zk)重建树根/STH 签名全过。zkvm-verify 新增无 witness 模式(服务端永无 midi/salt,红线 1)。
 
 1. **Ed25519 创作者身份**:`identity init` 生成密钥,私钥落 `creator-secret/`(目录原子创建、已存在即停)。
 2. **RFC 8785 JCS**:Python 侧没有标准库,选一个经过交叉测试的实现,并用小样本与 Rust `serde_jcs` 对拍;签名体保持小而简单(事件 body 只有几个字段),降低规范化踩坑面。
@@ -72,7 +74,7 @@ SPEC §20 已给出关键指令:**M0/M1 先做,基准门不过就砍范围,不�
 5. **字段黑名单**:服务端拒绝名为 `midi`/`salt`/`private_key` 的字段(SPEC §11.1)。
 6. SQLite 两阶段发布:先落文件再提交日志,避免悬空引用。
 
-### Phase 4 = SPEC M3:展品体验(约 1 周)
+### Phase 4 = SPEC M3:展品体验(约 1 周)**← 当前阶段(2026-09-01 起)**
 
 1. 普通页:结论 → 三条"密码学已证明" → S/V 双播放器(不默认同步) → **默认展开的"不能证明"声明**(文案逐字取 PRD §1/§11)。
 2. 技术页:公钥、承诺、Image ID、日志根、下载链接。

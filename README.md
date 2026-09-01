@@ -34,7 +34,17 @@
 - **内存限制(蓝屏防护)**:`--segment-po2 18 --keccak-po2 18`(默认 po2=20 曾打爆 8GB 显存蓝屏;限制后峰值显存 ~4.3 GB、prover 内存 < 1 GB)
 - 基准与限制详见 `docs/benchmarks.md` B1/B2/B3 节;构建产物在 `C:\music-zk-target\debug\`
 
-**进行中:Phase 3(SPEC M2)**——Ed25519 身份 + RFC 8785 JCS + FastAPI/SQLite 服务端 + RFC 6962 Merkle 日志 + CLI 六步流程。
+**Phase 3(SPEC M2:身份、日志、服务端)已完成 · 2026-09-01(门禁:真实端到端 t0→t1→t2 通过)**
+
+- `identity init`:Ed25519 keypair + `creator-secret/` 原子创建(已存在即停)+ README-PRIVATE.txt
+- **RFC 8785 JCS**:Python(`jcs` 包)与 Rust `serde_jcs` 12 样本(三类事件体 + 对抗用例)逐字节对拍
+- **FastAPI + SQLite 服务端**:三事件端点(签名/去重/引用顺序/字段黑名单 midi·salt·private_key/大小限制/两阶段发布);PROOF 上传前服务端本地跑标准 verifier
+- **RFC 6962 Merkle 日志**:Google CT 官方向量锁定树根字节级正确;STH 服务端 Ed25519 签名 + inclusion proof
+- **CLI 六步流程**:`identity init` / `commit create` / `song publish` / `prove`(真实 CUDA 证明 + 内存限制 + 降级提示)/ `proof publish`;另加 `server init/run`、`midi preflight`
+- **门禁**:minimal-onenote 从 CLI 走通 t0→t1→t2(服务端本地 verifier 复验通过);checkpoint + inclusion proof 独立实现验算全过
+- 产物:`music_zk/{protocol,server,cli}` 全层;zkvm-verify 支持无 witness 模式(服务端永无 midi/salt,红线 1)
+
+**进行中:Phase 4(SPEC M3)**——结果页(§3.7 文案常量逐字)+ 技术详情页 + 公开证据包 + `music-zk verify`(SPEC §15 十一项)+ `reveal-check` / `demo tamper` 五案例 + 一键演示。
 
 ## 环境要求(已实测)
 

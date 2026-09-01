@@ -162,16 +162,17 @@ scripts/
 **门禁**:30 秒负载 ≤60 分钟真实证明。不达标 → 调低 segment size limit;再不达标 → 缩时长/采样率(**新 protocol_id**)并公开记录。
 **实测(2026-09-01,Win 原生 CUDA)**:B1=637 s、B2=1269 s(≈21.2 min)、B3=2544 s,三负载独立 verifier 全过、峰值显存 ~4.3 GB 零蓝屏;门禁 **达标**。prove 必带 `--segment-po2 18 --keccak-po2 18`(默认 po2=20 打爆 8GB 显存曾蓝屏),详见 §2 与 docs/ENV.md。
 
-### Phase 3 = SPEC M2:身份、日志、服务端
+### Phase 3 = SPEC M2:身份、日志、服务端 ✅ 门禁通过(2026-09-01)
 
-- [ ] `identity init`:Ed25519,`creator-secret/` 原子创建、已存在即停、README-PRIVATE.txt
-- [ ] JCS(RFC 8785):选定 Python 实现 + 与 Rust 侧对拍小样本
-- [ ] FastAPI + SQLite:三事件端点、签名/引用/顺序校验、字段黑名单、大小限制、两阶段发布
-- [ ] Merkle 日志 + STH 签名 + inclusion proof(SPEC §11.3)
-- [ ] CLI:`commit create` / `song publish` / `prove`(§SPEC 13 六步流程)/ `proof publish`
-- [ ] Windows 检测:无 WSL 时按 `docs/PLAN.md §6.4` 提示降级路径
+- [x] `identity init`:Ed25519,`creator-secret/` 原子创建、已存在即停、README-PRIVATE.txt
+- [x] JCS(RFC 8785):选定 Python `jcs` 包 + 与 Rust `serde_jcs` 12 样本对拍逐字节一致
+- [x] FastAPI + SQLite:三事件端点、签名/引用/顺序校验、字段黑名单、大小限制、两阶段发布
+- [x] Merkle 日志 + STH 签名 + inclusion proof(SPEC §11.3;Google CT 官方向量锁定)
+- [x] CLI:`identity init` / `commit create` / `song publish` / `prove`(SPEC §13 六步)/ `proof publish`;另加 `server init/run`、`midi preflight`
+- [x] Windows 检测:prove 缺二进制时提示 PLAN §6.4 降级路径(Live USB / 证明搬运)
 
-**门禁**:示例 MIDI 从 CLI 完整走通 t0→t1→t2;用 curl 取 checkpoint 与 inclusion proof 独立验算通过。
+**门禁**:示例 MIDI(minimal-onenote)从 CLI 完整走通 t0→t1→t2(真实 CUDA 证明,服务端本地 verifier 复验通过);checkpoint + inclusion proof 用独立实现(不 import music_zk)重建树根与 STH 签名全过。
+**要点**:zkvm-verify 支持无 witness 模式(缺 midi.bin/salt.bin 时跳过 C_M 重算,红线 1 服务端永无私密材料);叶不含 tree_size/tree_root(循环依赖,OPEN-QUESTIONS);STH 直接签 JCS(OPEN-QUESTIONS)。
 
 ### Phase 4 = SPEC M3:展品体验
 
@@ -217,7 +218,8 @@ scripts/
 - 环境:§2 所列;conda env `music-zk`(Python 3.12.14);**prove/verify 已迁 Windows 原生**(构建前置 `. .\scripts\env-win.ps1`);WSL2 仅用于 guest 构建(`bash scripts/build-guest-wsl.sh`),工具链版本与接线见 `docs/ENV.md`。
 - **Phase 1 = SPEC M0 已过门禁**(2026-09-01,Win 原生):真实证明(C_M=`0717cc99...`)CPU 106–120 s,独立 verifier 复验通过;1 正 + 3 负 + dev-mode 编译期硬禁(共 5 项)PASS=5/FAIL=0;数字见 `docs/benchmarks.md`。
 - **Phase 2 = SPEC M1 已过门禁**(2026-09-01,Win 原生 CUDA):MIDI Profile 1 解析器 + ReferenceSynth 1 纯整数合成 + golden vectors ×6(native == guest == Python 逐字节一致)+ 真实负载基准 **B1(15s/4v)= 637 s、B2(30s/4v)= 1269 s ≈ 21.2 min、B3(60s/4v)= 2544 s**,独立 verifier 全过;门禁「30s 负载 ≤60 min」**达标**。
+- **Phase 3 = SPEC M2 已过门禁**(2026-09-01):`identity init` + JCS(RFC 8785,与 Rust serde_jcs 12 样本对拍)+ FastAPI/SQLite 三事件端点 + RFC 6962 Merkle 日志(Google CT 官方向量)+ CLI 六步流程;**minimal-onenote 真实端到端 t0→t1→t2**(真实 CUDA 证明、服务端本地 verifier 复验),checkpoint + inclusion proof 独立实现验算全过。产物:music_zk/{protocol,server,cli} 全层 + zkvm-verify 无 witness 模式。
 - **蓝屏教训(2026-09-01)**:默认 `segment_limit_po2=20` 时单 segment 显存缓冲打爆 8 GB 卡 → 蓝屏;prove 必带 `--segment-po2 18 --keccak-po2 18`(峰值显存稳定 ~4.3 GB,prover 内存 < 1 GB)。构建产物在 `C:\music-zk-target\debug\`(`rust\target\debug\` 下是旧拷贝)。详见 §2 与 docs/ENV.md。
 - **protocol_id 已按 SPEC §5 升为 statement-2**(Phase 2 完整 guest 的 Image ID `5e06801b...`,见 `protocol/v1.json`)。
 
-**第一步(现在做)**:读 SPEC §10–14,开始 Phase 3 = SPEC M2(身份、日志、服务端):`identity init`(Ed25519 + `creator-secret/`)、JCS(RFC 8785,Python 与 Rust `serde_jcs` 对拍)、FastAPI + SQLite 三事件端点(签名/引用/顺序校验 + 字段黑名单 + 两阶段发布)、RFC 6962 风格 Merkle 日志 + STH + inclusion proof、CLI 六步流程(`commit create` / `song publish` / `prove` / `proof publish`)、Windows 无 WSL 降级提示。
+**第一步(现在做)**:读 SPEC §12/§15,开始 Phase 4 = SPEC M3(展品体验):结果页(首屏顺序、状态机、§3.7 文案常量逐字、S/V 播放器)、技术详情页 + 公开证据包下载、`music-zk verify public-evidence/`(SPEC §15 十一项逐项输出)+ `reveal-check` + `demo tamper` 五案例、一键演示脚本。文案红线:§3.7 常量逐字,零自由发挥。
