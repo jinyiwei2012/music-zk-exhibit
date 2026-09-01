@@ -339,6 +339,14 @@ def create_app(
             "sth": _sth_payload(store.latest_sth()) if store.latest_sth() else None,
         }
 
+    # ---------- 首页(PRD §13.1:正式声明 + 完整限制声明) ----------
+
+    @app.get("/")
+    def index() -> HTMLResponse:
+        from music_zk.web.pages import index_page
+
+        return HTMLResponse(index_page())
+
     # ---------- 展示页与音频(Phase 4,PRD §11) ----------
 
     def _claim_or_404(claim_id: str):

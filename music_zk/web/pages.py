@@ -73,6 +73,26 @@ def _page(title: str, body: str) -> str:
 </body></html>"""
 
 
+def index_page() -> str:
+    """首页(PRD §13.1):正式声明 + 完整限制声明;列出已知 claim。"""
+    title = "Music-ZK Exhibit — 结构化音乐材料的预先持有证明"
+    body = f"<h1>{html.escape(title)}</h1>"
+    body += (
+        "<p>本展品用 RISC Zero zkVM 证明一个范围明确的窄声明:</p>"
+        "<p><strong>在公开歌曲发布前,某创作者公钥已提交一份私有 MIDI 的承诺,"
+        "且该 MIDI 经固定的 ReferenceSynth 渲染后对应公开的参考音频</strong>"
+        "——但不泄露 MIDI 本身。</p>"
+    )
+    body += (f'<details class="not-proven" open>'
+             f'<summary>{html.escape(C.NOT_PROVEN_HEADER)}</summary>'
+             f'<p class="limitation">{html.escape(C.LIMITATION)}</p></details>')
+    body += '<h2>查看一个 claim</h2>'
+    body += ('<p>在服务端地址后输入 <span class="mono">/claim/&lt;claim_id&gt;</span>'
+             ' 查看结果页;或使用 CLI 离线验证公开证据包:</p>'
+             '<pre class="mono">music-zk verify public-evidence/ --server-key &lt;服务端公钥 hex&gt;</pre>')
+    return _page(title, body)
+
+
 def result_page(claim: dict[str, Any]) -> str:
     """结果页(PRD §11.1 首屏顺序)。claim 来自 /api/v1/claims/{id}。"""
     state = _state_of(claim.get("events", []))

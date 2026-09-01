@@ -174,14 +174,15 @@ scripts/
 **门禁**:示例 MIDI(minimal-onenote)从 CLI 完整走通 t0→t1→t2(真实 CUDA 证明,服务端本地 verifier 复验通过);checkpoint + inclusion proof 用独立实现(不 import music_zk)重建树根与 STH 签名全过。
 **要点**:zkvm-verify 支持无 witness 模式(缺 midi.bin/salt.bin 时跳过 C_M 重算,红线 1 服务端永无私密材料);叶不含 tree_size/tree_root(循环依赖,OPEN-QUESTIONS);STH 直接签 JCS(OPEN-QUESTIONS)。
 
-### Phase 4 = SPEC M3:展品体验
+### Phase 4 = SPEC M3:展品体验 ✅ 门禁通过(2026-09-01)
 
-- [ ] 结果页:首屏顺序、状态机、§3.7 文案常量逐字、S/V 播放器
-- [ ] 技术详情页 + 公开证据包下载(SPEC §12.2 内容清单 + VERIFYING.md)
-- [ ] `music-zk verify public-evidence/`:SPEC §15 十一步逐项输出(总体有效要求 2..10 全过);`reveal-check`、`demo tamper` 五案例
-- [ ] 一键演示脚本(暂停讲解每步)
+- [x] 结果页:首屏顺序、状态机、§3.7 文案常量逐字、S/V 播放器
+- [x] 技术详情页 + 公开证据包下载(SPEC §12.2 内容清单 + VERIFYING.md)
+- [x] `music-zk verify public-evidence/`:SPEC §15 十一步逐项输出(总体有效要求 2..10 全过 + 步骤 1 包损坏不得总体有效);`reveal-check`、`demo tamper` 五案例
+- [x] 一键演示脚本(暂停讲解每步)
 
 **门禁**:PRD §13.1 表述验收逐条过;红 7(文案)零违反。
+**实测(2026-09-01)**:`scripts/demo.ps1 -Auto` 完整走通 9 步——真实证明 → 证据包导出 → 离线 verify 十项全有效 → reveal-check 打开 → 五个 tamper 案例全部检出;`scripts/demo.ps1`(交互)逐暂停讲解。
 
 ### Phase 5 = SPEC M4:审查收尾
 
@@ -219,7 +220,8 @@ scripts/
 - **Phase 1 = SPEC M0 已过门禁**(2026-09-01,Win 原生):真实证明(C_M=`0717cc99...`)CPU 106–120 s,独立 verifier 复验通过;1 正 + 3 负 + dev-mode 编译期硬禁(共 5 项)PASS=5/FAIL=0;数字见 `docs/benchmarks.md`。
 - **Phase 2 = SPEC M1 已过门禁**(2026-09-01,Win 原生 CUDA):MIDI Profile 1 解析器 + ReferenceSynth 1 纯整数合成 + golden vectors ×6(native == guest == Python 逐字节一致)+ 真实负载基准 **B1(15s/4v)= 637 s、B2(30s/4v)= 1269 s ≈ 21.2 min、B3(60s/4v)= 2544 s**,独立 verifier 全过;门禁「30s 负载 ≤60 min」**达标**。
 - **Phase 3 = SPEC M2 已过门禁**(2026-09-01):`identity init` + JCS(RFC 8785,与 Rust serde_jcs 12 样本对拍)+ FastAPI/SQLite 三事件端点 + RFC 6962 Merkle 日志(Google CT 官方向量)+ CLI 六步流程;**minimal-onenote 真实端到端 t0→t1→t2**(真实 CUDA 证明、服务端本地 verifier 复验),checkpoint + inclusion proof 独立实现验算全过。产物:music_zk/{protocol,server,cli} 全层 + zkvm-verify 无 witness 模式。
+- **Phase 4 = SPEC M3 已过门禁**(2026-09-01):结果页/技术页/首页(§3.7 文案常量逐字、状态机、S/V 播放器、不能证明默认展开)+ 公开证据包导出(SPEC §12.2)+ `music-zk verify` 十一项逐项输出 + `reveal-check` + `demo tamper` 五案例 + `scripts/demo.ps1` 一键演示;**实测:离线 verify 十项全有效、tamper 五案例全检出**。产物:music_zk/web 全层 + verifier/evidence.py。
 - **蓝屏教训(2026-09-01)**:默认 `segment_limit_po2=20` 时单 segment 显存缓冲打爆 8 GB 卡 → 蓝屏;prove 必带 `--segment-po2 18 --keccak-po2 18`(峰值显存稳定 ~4.3 GB,prover 内存 < 1 GB)。构建产物在 `C:\music-zk-target\debug\`(`rust\target\debug\` 下是旧拷贝)。详见 §2 与 docs/ENV.md。
 - **protocol_id 已按 SPEC §5 升为 statement-2**(Phase 2 完整 guest 的 Image ID `5e06801b...`,见 `protocol/v1.json`)。
 
-**第一步(现在做)**:读 SPEC §12/§15,开始 Phase 4 = SPEC M3(展品体验):结果页(首屏顺序、状态机、§3.7 文案常量逐字、S/V 播放器)、技术详情页 + 公开证据包下载、`music-zk verify public-evidence/`(SPEC §15 十一项逐项输出)+ `reveal-check` + `demo tamper` 五案例、一键演示脚本。文案红线:§3.7 常量逐字,零自由发挥。
+**第一步(现在做)**:读 SPEC §17.4/§17.5/§18 与 PRD §13.2/§13.3,开始 Phase 5 = SPEC M4(审查收尾):隐私扫描(全库 grep 私密字节、断网 proving、崩溃残留)、CI 双构建 Image ID 一致、性能报告 B0–B3 全量入册、README 状态更新。

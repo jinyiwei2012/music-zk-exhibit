@@ -74,14 +74,11 @@ SPEC §20 已给出关键指令:**M0/M1 先做,基准门不过就砍范围,不�
 5. **字段黑名单**:服务端拒绝名为 `midi`/`salt`/`private_key` 的字段(SPEC §11.1)。
 6. SQLite 两阶段发布:先落文件再提交日志,避免悬空引用。
 
-### Phase 4 = SPEC M3:展品体验(约 1 周)**← 当前阶段(2026-09-01 起)**
+### Phase 4 = SPEC M3:展品体验(约 1 周)
 
-1. 普通页:结论 → 三条"密码学已证明" → S/V 双播放器(不默认同步) → **默认展开的"不能证明"声明**(文案逐字取 PRD §1/§11)。
-2. 技术页:公钥、承诺、Image ID、日志根、下载链接。
-3. `music-zk verify public-evidence/`:SPEC §15 的 11 步逐项输出,不合并成单一布尔。
-4. 五个篡改实验的演示脚本(`music-zk demo tamper --case ...`)。
+> ✅ **已完成(2026-09-01)**:结果页/技术页/首页(§3.7 文案常量逐字、状态机、S/V 双播放器不默认同步、不能证明默认展开)+ 公开证据包导出(SPEC §12.2:claim/manifest/三回执/journal/zkvm-receipt/song-S/reference-V/checksums/VERIFYING.md)+ `music-zk verify`(SPEC §15 十一项逐项,步骤 1 包损坏不得总体有效)+ `reveal-check` + `demo tamper` 五案例 + `scripts/demo.ps1` 一键演示(暂停讲解每步)。**实测:离线 verify 十项全有效、五个 tamper 案例全部检出、PRD §13.1 表述验收过**。演示链路修复三处:identity ACL 完整控制、prove 填 journal 上下文、song-S glob 校验。
 
-### Phase 5 = SPEC M4:审查收尾(几天)
+### Phase 5 = SPEC M4:审查收尾(几天)**← 当前阶段(2026-09-01 起)**
 
 - 隐私扫描:全库 grep 私密字节、断网 proving 测试、崩溃残留检查(SPEC §17.4)。
 - 可复现构建:CI 干净环境双构建,两次 Image ID 一致;README 给出源码算 Image ID 的命令。

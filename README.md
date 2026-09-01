@@ -44,7 +44,17 @@
 - **门禁**:minimal-onenote 从 CLI 走通 t0→t1→t2(服务端本地 verifier 复验通过);checkpoint + inclusion proof 独立实现验算全过
 - 产物:`music_zk/{protocol,server,cli}` 全层;zkvm-verify 支持无 witness 模式(服务端永无 midi/salt,红线 1)
 
-**进行中:Phase 4(SPEC M3)**——结果页(§3.7 文案常量逐字)+ 技术详情页 + 公开证据包 + `music-zk verify`(SPEC §15 十一项)+ `reveal-check` / `demo tamper` 五案例 + 一键演示。
+**Phase 4(SPEC M3:展品体验)已完成 · 2026-09-01(门禁:离线 verify 十项全有效 + tamper 五案例全检出)**
+
+- **文案常量逐字**(`music_zk/web/copy.py`):§3.7 全部常量集中单一权威,页面零自由发挥;"不能证明"默认展开、S/V 相似性固定输出
+- **结果页/技术页/首页**:首屏顺序(结论 → 密码学已证明 ≤3 条 → S/V 双播放器不默认同步 → 不能证明展开 → 时间线 → 技术细节)、状态机(COMMITTED/RELEASED_UNPROVEN/PROOF_VALID/PROOF_INVALID/DEV_ONLY)
+- **公开证据包导出**(`evidence export`,SPEC §12.2):claim/manifest/三回执/journal/zkvm-receipt/song-S/reference-V/checksums/VERIFYING.md,可完全离线验证
+- **`music-zk verify`**(SPEC §15 十一项):逐项布尔输出;总体有效要求 2..10 全过,步骤 1 包损坏不得总体有效
+- **`reveal-check`** + **`demo tamper` 五案例**(midi-byte/wav-sample/salt/log-receipt/event-order):篡改全部检出
+- **`scripts/demo.ps1`**:一键演示(暂停讲解每步 / `-Auto`)
+- 产物:`music_zk/web` + `verifier/evidence.py`;实测演示:真实证明 → 证据包 → 离线 verify 十项全有效 → tamper 全检出
+
+**进行中:Phase 5(SPEC M4)**——隐私扫描、CI 双构建 Image ID 一致、性能报告 B0–B3 全量、README 定稿。
 
 ## 环境要求(已实测)
 
