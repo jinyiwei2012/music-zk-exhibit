@@ -38,3 +38,6 @@ desktop.ini
 server-data/
 public-evidence/
 !docs/public-evidence-spec/
+
+# --- Phase 2 bench derived artifacts (regenerable) ---
+protocol/bench-midis/*.wav
