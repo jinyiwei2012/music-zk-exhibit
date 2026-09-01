@@ -59,7 +59,12 @@ cuda = [
     "risc0-circuit-keccak/cuda",
     "risc0-circuit-recursion/cuda",
     "risc0-circuit-rv32im/cuda",
-    "risc0-groth16/cuda",
+    # [Win 原生迁移 2026-09-01 patch] 移除 risc0-groth16/cuda:
+    # 其 CUDA 内核 groth16_coeffs.cuh 无条件 include POSIX 头
+    # (sys/mman.h/unistd.h 等),Windows 无此头 → C1083。
+    # 本项目只用 STARK 收据(default_prover),不产 Groth16 压缩收据,
+    # 故 groth16 仅保留 rust 侧 prove(prove feature 已含),不启用 CUDA 加速。
+    # "risc0-groth16/cuda",
     "risc0-zkp/cuda",
 ]
 default = [

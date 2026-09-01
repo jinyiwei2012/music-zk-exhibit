@@ -14,6 +14,10 @@
 #   - cc-rs MSVC detection can fail on CJK systems -> import vcvars64.bat env
 #     manually.
 
+# 保存调用者原值,dot-source 结束后恢复,避免污染调用者作用域
+# (cargo 的 stderr 进度在 $ErrorActionPreference="Stop" 下会被 PowerShell
+#  误判为终止错误而中断构建 —— 见 PLAN.md §6.2)
+$_prevEAP = $ErrorActionPreference
 $ErrorActionPreference = "Stop"
 
 $vcvars = "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
@@ -36,11 +40,17 @@ Remove-Item -Path $envDump -ErrorAction SilentlyContinue
 
 $env:CXXFLAGS = "/std:c++20 /DNOMINMAX"
 
-# CUDA Toolkit(risc0 cuda feature 的 nvcc 需求;与 WSL 侧同为 12.4)
-$cudaPath = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4"
+# CUDA Toolkit(risc0 cuda feature 的 nvcc 需求)
+# 2026-09-01 升级 12.4.1 → 13.2:CUDA 12.4 的 cudafe++ 与 VS Build Tools 2026
+# (VC 14.51,_MSC_VER 1951)不兼容,解析 MSVC 18 头文件时崩溃(0xC0000409);
+# CUDA 13.2+ 官方支持 VS 2026(见 nvidia 安装指南 Windows 编译器支持表)。
+$cudaPath = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2"
 if (Test-Path $cudaPath) {
     $env:CUDA_PATH = $cudaPath
     $env:PATH = "$cudaPath\bin;$env:PATH"
 }
 
 Write-Host "[env-win] MSVC imported; CXXFLAGS='$env:CXXFLAGS'; CUDA='$env:CUDA_PATH'"
+
+# 恢复调用者原始的 ErrorActionPreference(默认 Continue)
+$ErrorActionPreference = $_prevEAP

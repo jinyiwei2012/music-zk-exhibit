@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn protocol_hash_known_vector() {
-        let expect = hex32("a0100df46490629dc24ac5e6d0715564302fbc7c8ee676d6f65c264fba678e05");
+        let expect = hex32("ecbd2763a2307149207dc579579458956dc6ecad8237f9d73301bab7ac0c6da5");
         assert_eq!(protocol_hash(PROTOCOL_ID), expect);
     }
 

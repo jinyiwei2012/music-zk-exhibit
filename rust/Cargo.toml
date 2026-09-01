@@ -10,9 +10,28 @@ members = ["reference-core", "reference-native", "zkvm-methods", "zkvm-host", "t
 # 2. risc0-zkvm 3.0.6:prove/default.rs(r0vm IPC prover)无条件编译但使用
 #    UnixStream/OwnedFd,Windows 编译失败。DefaultProver 仅 bonsai/actor 路径用,
 #    本地补上 #[cfg(feature = "bonsai")] gate。
+# 3. sppark 0.1.15:cc-rs 把 CXXFLAGS(MSVC 风格)追加给 nvcc 导致 cuda_available
+#    GPU 探测编译失败(错误被 `let _` 吞掉 → panic)。本地版 build.rs 开头
+#    移除 CXXFLAGS,其余字节与 crates.io 0.1.15 一致。
+# 4. risc0-build-kernel 2.0.1:compile_cuda 硬编码 `-Xcompiler -Wno-missing-braces,...`
+#    (GNU 风格),MSVC cl 不认报 D8021。本地版对该两 flag 做 MSVC 门控;
+#    另加 MSVC 专属修复:allow-unsupported-compiler、CCCL 宏、-std=c++17、
+#    /utf-8、移除 CXXFLAGS(cudafe++ 崩溃根因)。
+# 5. risc0-sys 1.5.0:其 .cu 用 `uint`(Linux sys/types.h 间接提供),MSVC 无此
+#    类型;本地版 build.rs 在 msvc 下加 -Duint=unsigned int(仅本 crate,
+#    避免污染 CUDA 13 thrust 的 vector_types)。其余字节与 crates.io 一致。
+# 6. risc0-circuit-keccak-sys 4.0.3:硬编码 `-Xcompiler -Wno-unused-function,...`
+#    (GNU 风格)MSVC 不认;本地版做 MSVC 门控 + CXXFLAGS 移除(cudafe++ 崩溃
+#    根因)+ CCCL/utf-8 flag。其余字节与 crates.io 一致。
+# 7. risc0-circuit-rv32im-sys 4.0.3:同 keccak-sys 的 GNU flag 问题,同样 patch。
 [patch.crates-io]
 risc0-circuit-keccak = { path = "vendor/risc0-circuit-keccak" }
 risc0-zkvm = { path = "vendor/risc0-zkvm" }
+sppark = { path = "vendor/sppark" }
+risc0-build-kernel = { path = "vendor/risc0-build-kernel" }
+risc0-sys = { path = "vendor/risc0-sys" }
+risc0-circuit-keccak-sys = { path = "vendor/risc0-circuit-keccak-sys" }
+risc0-circuit-rv32im-sys = { path = "vendor/risc0-circuit-rv32im-sys" }
 
 [workspace.package]
 version = "0.1.0"

@@ -9,3 +9,10 @@ rustflags = ["-C", "link-arg=/STACK:0x4000000"]
 
 [target.x86_64-pc-windows-gnu]
 rustflags = ["-C", "link-arg=-Wl,--stack,67108864"]
+
+# CARGO_TARGET_DIR 指向 ASCII 路径:仓库根目录含 CJK("非AI音乐的零知识证明"),
+# nvcc 链接器阶段(cl.exe LINK)对非 ASCII 路径编码错乱,报 LNK1104
+# (sppark 的 cuda_available GPU 探测编译,2026-09-01 实测)。
+# 注意:必须用 [build] target-dir(cargo 核心配置),[env] 段不影响 cargo 自身路径。
+[build]
+target-dir = "C:/music-zk-target"
