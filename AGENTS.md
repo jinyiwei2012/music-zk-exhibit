@@ -28,7 +28,7 @@
 - Windows(build 10.0.28120),Git Bash + PowerShell;git 2.55.0
 - 系统全局 Python 3.14.6(**不使用**)← 项目环境用 conda:`music-zk`(Python 3.12)。**用户可能在启动 agent 前已手动激活**,agent 必须先按 §8 第一条自检当前是否处于虚拟环境再行动;所有 Python 工作(CLI/server/verifier/tests)都必须在 `music-zk` 内
 - **Rust(Windows 原生)**:rustup 1.29.0,工具链 `stable-x86_64-pc-windows-msvc`(1.98.0);VS Build Tools 18(VC 14.51 + SDK 10.0.26100);CUDA Toolkit **13.2**(12.4 的 cudafe++ 与 VS 2026 不兼容,已移除);NVIDIA 驱动 **616.56**(CUDA 13.x 需 ≥580);RTX 4060 8GB
-- **prove/verify 全部 Windows 原生**(CPU 1 正 4 负门禁绿;**CUDA 已验证**:statement-2 完整 guest 4.1 s vs CPU 106–120 s;**Phase 2 真实负载** B1/B2/B3 全过,详见 §9)。构建前 `. .\scripts\env-win.ps1`(见 docs/ENV.md)
+- **prove/verify 全部 Windows 原生**(CPU 1 正 4 负门禁绿;**CUDA 已验证**:statement-2 完整 guest 4.1 s vs CPU 106–120 s;**纯 CPU 构建亦验证通过**:`cargo build --no-default-features -p zkvm-host --bins`,cuda 是 zkvm-host 的默认 feature,CI 无 GPU 用此路径)。构建前 `. .\scripts\env-win.ps1`(见 docs/ENV.md)
 - **内存限制(蓝屏防护,2026-09-01 起 prove 必带)**:`--segment-po2 18 --keccak-po2 18` + `RAYON_NUM_THREADS≤8`。默认 segment po2=20 时单 segment 显存缓冲按 2^20 行分配,8 GB 卡真实负载直接打爆 → 蓝屏;po2=18 实测峰值显存稳定 ~4.3 GB。限制与耗时权衡见 docs/benchmarks.md B1/B2/B3 节。
 - **构建产物位置**:`C:\music-zk-target\debug\`(`rust/.cargo/config.toml` 的 `[build] target-dir`,因 CJK 仓库路径规避 LNK1104)。**脚本/手工一律用这里的 exe**;`rust\target\debug\` 下是迁移前旧拷贝(不认 `--segment-po2`),勿用。
 - **guest 构建仍只在 WSL**(risc0 工具链无 Windows 二进制;rzup 硬性不可用):`bash scripts/build-guest-wsl.sh` → 产物 R0BF 入库 `protocol/guest-v1.elf`

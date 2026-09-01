@@ -50,10 +50,27 @@
   4. `risc0-circuit-keccak-sys` / `risc0-circuit-rv32im-sys` build.rs:同 2 的 CUDA MSVC 修复(keccak 加 uint force-include)。
   5. `risc0-zkvm` Cargo.toml:cuda feature 移除 `risc0-groth16/cuda`(其 CUDA 内核无条件 include POSIX `sys/mman.h`,Windows 无此头;本项目只用 STARK 收据,不需要 Groth16 GPU 加速)。
 - 构建时的 `RECURSION_SRC_PATH` 环境变量指向本地 `recursion_zkr.zip`(risc0-circuit-recursion 下载 S3 被代理损坏,手动下载校验 SHA256 通过;临时目录 `%TEMP%\opencode\recursion_zkr.zip`)。
+- **纯 CPU 构建已验证**(2026-09-01):`zkvm-host` 的 `cuda` 提为 cargo feature(`default = ["cuda"]`);`cargo build --no-default-features -p zkvm-host --bins` 走纯 CPU(CI 无 GPU 用此路径)。本地实测:CPU 版构建 2m30s,`zkvm-verify` 对入库 fixture 收据真实密码学复验通过。**构建 CPU 版后需再 `cargo build`(默认)恢复 CUDA 版**(同一 target-dir 覆盖)。
+- **elf2r0bf 不能在 Windows 原生构建**(2026-09-01):risc0-binfmt 的 `ProgramBinary::compute_image_id`/`to_image` 代码路径引用 risc0-zkvm-platform 的 `sys_alloc_words`,它调用 `extern "C" sys_alloc_aligned`——该符号只在 `export-syscalls` feature 下才有 host 定义,仓库内无人启用 → **LNK2019 无法解析**。WSL/Linux 链接正常(实测 13s 构建成功)。→ **elf2r0bf 只在 WSL/CI 构建,Windows 宿主不构建它**。
+- **guest Image ID 路径敏感**(2026-09-01,详见 OPEN-QUESTIONS):guest ELF 经 `file!()` 把绝对构建路径(CARGO_HOME + 仓库路径)编进 .rodata;同环境双构建字节一致、跨环境不一致。§17.5 门禁取"同环境双构建 R0BF SHA-256 一致";修复须 `remap-path-prefix` + 升 protocol_id,v1 不采用。
 
-## 工具链接线(WSL 侧 guest 构建,2026-08-31 手动安装;勿删,CI/新机器照此复现)
+## CI(GitHub Actions,2026-09-01 首次 push 双 job 全绿;SPEC §17.5)
 
-- 本机 GitHub 直连被阻断;组件全部经镜像落地:
+| 组件 | 版本 | 实测日期 | 来源命令 |
+|------|------|----------|----------|
+| ubuntu-latest(runner) | Ubuntu 24.04 | 2026-09-01 | `cat /etc/os-release`(runner 预装) |
+| windows-latest(runner) | Windows Server 2022 + VS 2022 Build Tools + cmake(预装) | 2026-09-01 | runner 预装 |
+| rzup | 0.5.0(官方 `curl -L https://risczero.com/install \| bash`) | 2026-09-01 | `rzup --version` |
+| risc0 工具链 | rustc 1.97.0-dev (e638c6cfe 2026-07-15)——**与本地 WSL 逐字一致** | 2026-09-01 | `rustc +risc0-1.97.0 --version` |
+| cargo-risczero | 3.0.6(`rzup install cargo-risczero`)——**不含 r0vm** | 2026-09-01 | `ls ~/.risc0/bin` |
+
+- **rzup 在干净环境可用**:本机安装失败系代理网络(下载被损坏),CI 直连官方 CDN 正常——工具链 rust/cargo-risczero 均按固定版本装上。
+- **rzup 把工具链命名为 `risc0`**(非 `risc0-1.97.0`);`rust-toolchain.toml` 锁定名须经 `rustup toolchain link risc0-1.97.0 <~/.risc0/toolchains/*>` 建链接后 `cargo build` 才能解析。
+- **r0vm 不在 rzup 安装内** → CI 的 Image ID 门禁不依赖 r0vm,改用同环境**双构建 R0BF SHA-256 一致**(字节一致 ⇒ Image ID 一致)。本地 WSL 的 r0vm 来自手工 tarball(见下节)。
+- **guest 双构建确定性实测**:ubuntu 同环境两次构建 R0BF SHA-256 一致(CI:`7db8d0a2...` == `7db8d0a2...`;本地 WSL 双构建 `ce00d244...` 与冻结产物一致)。
+- **windows-latest 纯 CPU 构建 verifier**:`cargo build --no-default-features -p zkvm-host --bins -p reference-native`(risc0 C++ CPU 内核经 MSVC + cmake 构建成功,23m54s job 全绿)。
+
+## 工具链接线(WSL 侧 guest 构建,2026-08-31 手动安装;勿删,CI/新机器照此复现)- 本机 GitHub 直连被阻断;组件全部经镜像落地:
   - cargo-risczero / r0vm:ghfast.top 镜像下载 `v3.0.6/cargo-risczero-x86_64-unknown-linux-gnu.tgz` → 解压安装到 `~/.risc0/bin/`
   - risc0 工具链:ghfast.top 镜像下载 `risc0/rust` 发布 `r0.1.97.0/rust-toolchain-x86_64-unknown-linux-gnu.tar.gz` → 解压到 **`~/.risc0/toolchains/r0.1.97.0/`**(目录名必须能被 rzup 解析:见 rzup paths.rs)
   - `rustup toolchain link risc0-1.97.0 ~/.risc0/toolchains/r0.1.97.0`
