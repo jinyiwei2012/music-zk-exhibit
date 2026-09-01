@@ -6,10 +6,10 @@
 
 pub mod midi;
 mod phase_steps;
-mod synth;
+pub mod synth;
 
 pub use midi::{parse_midi, NoteEvent, ParsedMidi, ParseError};
-pub use synth::{render, render_stream, SynthParams, SAMPLE_RATE};
+pub use synth::{render, render_stream, sample_count, SynthParams, SAMPLE_RATE};
 
 use sha2::{Digest, Sha256};
 
@@ -18,7 +18,9 @@ use sha2::{Digest, Sha256};
 // ---------------------------------------------------------------------------
 
 /// protocol_id(SPEC §5 / AGENTS.md §3.1)。
-pub const PROTOCOL_ID: &str = "music-zk-exhibit/midi-profile-1/reference-synth-1/statement-1";
+/// statement-1 = Phase 1 M0 guest(MIDI 重算 C_M);statement-2 = Phase 2 完整 guest
+/// (MIDI Profile 1 + ReferenceSynth 1,Image ID bee80805...,见 protocol/v1.json)。
+pub const PROTOCOL_ID: &str = "music-zk-exhibit/midi-profile-1/reference-synth-1/statement-2";
 
 /// 域分离前缀(SPEC §7;ASCII 中的 `\0` 是真实 0x00 字节)。
 pub const MIDI_COMMIT_PREFIX: &[u8] = b"MUSIC-ZK\x00MIDI-COMMIT\x00V1\x00";

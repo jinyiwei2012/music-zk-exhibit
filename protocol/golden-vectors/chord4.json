@@ -1,0 +1,86 @@
+{
+  "midi_sha256": "ba6b20d1d2789e1ca26d817ba65b7c9d4661d5bf4d58589e38479196ababe1d3",
+  "salt": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "c_m": "c5ea24416f229ac0c75e14b2ce79bb7fbaa7c0f70a18113d0f46b00c61c3323f",
+  "events": [
+    {
+      "type": "on",
+      "tick": 0,
+      "note": 60
+    },
+    {
+      "type": "on",
+      "tick": 0,
+      "note": 64
+    },
+    {
+      "type": "on",
+      "tick": 0,
+      "note": 67
+    },
+    {
+      "type": "on",
+      "tick": 0,
+      "note": 71
+    },
+    {
+      "type": "off",
+      "tick": 480,
+      "note": 60
+    },
+    {
+      "type": "off",
+      "tick": 960,
+      "note": 64
+    },
+    {
+      "type": "off",
+      "tick": 1440,
+      "note": 67
+    },
+    {
+      "type": "off",
+      "tick": 1920,
+      "note": 71
+    }
+  ],
+  "last_note_off_tick": 1920,
+  "sample_count": 16960,
+  "head_samples": [
+    0,
+    56,
+    122,
+    146,
+    141,
+    137,
+    132,
+    119,
+    106,
+    83,
+    38,
+    -11,
+    -51,
+    -120,
+    -233,
+    -284
+  ],
+  "tail_samples": [
+    36,
+    50,
+    33,
+    19,
+    18,
+    13,
+    4,
+    0,
+    0,
+    -4,
+    -7,
+    -6,
+    -5,
+    -5,
+    -3,
+    0
+  ],
+  "c_v": "a66785a868676e86cf7195d0ab4e7437eba20a9e74afc24da6d385e5cfea5053"
+}

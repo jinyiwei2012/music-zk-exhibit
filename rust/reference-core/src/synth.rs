@@ -70,6 +70,21 @@ pub const SYNTH_PARAMS: SynthParams = SynthParams {
 /// 冻结波表字节(2048 × LE i16 = 4096 B;include_bytes 相对本文件路径)。
 const WAVETABLE: &[u8; 4096] = include_bytes!("../../../protocol/wavetable-v1.bin");
 
+/// 编译期把波表字节解析为 [i16; 2048](避免每样本两次字节解析)。
+const fn build_wavetable() -> [i16; WAVETABLE_LEN] {
+    let mut t = [0i16; WAVETABLE_LEN];
+    let mut i = 0;
+    while i < WAVETABLE_LEN {
+        let lo = WAVETABLE[i * 2] as u16;
+        let hi = WAVETABLE[i * 2 + 1] as u16;
+        t[i] = (lo | (hi << 8)) as i16;
+        i += 1;
+    }
+    t
+}
+
+static WAVETABLE_I16: [i16; WAVETABLE_LEN] = build_wavetable();
+
 /// 包络阶段。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum EnvState {
@@ -121,12 +136,10 @@ impl Voice {
     }
 }
 
-/// 波表查表:i16 LE 字节 → 符号样本。
+/// 波表查表:编译期预转换的 i16 表,索引取 phase 最高 11 位。
 #[inline]
 fn wave_sample(phase: u32) -> i32 {
-    let idx = ((phase >> 21) as usize) & (WAVETABLE_LEN - 1); // 最高 11 位 ∈ 0..2048
-    let b = &WAVETABLE[idx * 2..idx * 2 + 2];
-    i16::from_le_bytes([b[0], b[1]]) as i32
+    i32::from(WAVETABLE_I16[((phase >> 21) as usize) & (WAVETABLE_LEN - 1)])
 }
 
 /// 事件到 sample 的映射(SPEC §9.2):floor(tick * 25 / 3),u64 防溢出。
@@ -154,30 +167,39 @@ pub fn wav_header(sample_count: u32) -> [u8; 44] {
     h
 }
 
+/// 输出样本总数(SPEC §9.1:到最后 Note Off 后 120 ms)。
+pub fn sample_count(parsed: &ParsedMidi) -> u64 {
+    tick_to_sample(parsed.last_note_off_tick) + u64::from(RELEASE_SAMPLES)
+}
+
 /// 流式渲染(SPEC §9.6 精神):对每个输出样本调用 `sink`,返回总样本数。
 /// 同一 sample 的多事件按 MIDI 文件顺序、在生成该 sample 前应用(SPEC §9.2)。
+///
+/// 性能:维护活跃 voice 索引列表,每样本只遍历活跃 voice(典型负载 1-4 个,
+/// 而非固定 8 槽),显著降低 zkVM 内整数运算成本。
 pub fn render_stream(parsed: &ParsedMidi, mut sink: impl FnMut(i16)) -> u64 {
-    let last_off_sample = tick_to_sample(parsed.last_note_off_tick);
-    let total = last_off_sample + u64::from(RELEASE_SAMPLES);
+    let total = sample_count(parsed);
 
     let events = &parsed.events;
     // 预计算每个事件的 sample 位置(避免循环内重复除法)
     let samples: Vec<u64> = events.iter().map(|e| tick_to_sample(event_tick(e))).collect();
     let mut voices = [Voice::idle(); VOICES];
+    let mut active: [usize; VOICES] = [0; VOICES]; // 活跃 voice 的槽位索引列表
+    let mut active_cnt = 0usize;
     let mut ei = 0usize;
 
     for s in 0..total {
         // 1) 应用本 sample 的所有事件(文件顺序)
         while ei < events.len() && samples[ei] == s {
-            apply_event(&mut voices, &events[ei]);
+            active_cnt = apply_event(&mut voices, &mut active, active_cnt, &events[ei]);
             ei += 1;
         }
-        // 2) 推进各 voice 并混音
+        // 2) 推进各活跃 voice 并混音
         let mut sum: i32 = 0;
-        for v in voices.iter_mut() {
-            if !v.active {
-                continue;
-            }
+        let mut k = 0usize;
+        while k < active_cnt {
+            let idx = active[k];
+            let v = &mut voices[idx];
             match v.state {
                 EnvState::Attack => {
                     v.attack_pos += 1;
@@ -190,6 +212,9 @@ pub fn render_stream(parsed: &ParsedMidi, mut sink: impl FnMut(i16)) -> u64 {
                     v.release_pos += 1;
                     if v.release_pos >= RELEASE_SAMPLES {
                         v.active = false;
+                        // 从活跃列表移除(用末尾元素填补,顺序无关紧要)
+                        active[k] = active[active_cnt - 1];
+                        active_cnt -= 1;
                         continue;
                     }
                 }
@@ -201,6 +226,7 @@ pub fn render_stream(parsed: &ParsedMidi, mut sink: impl FnMut(i16)) -> u64 {
                     / i64::from(Q15_MAX * Q15_MAX);
             sum = sum.saturating_add(contrib as i32);
             v.phase = v.phase.wrapping_add(v.step);
+            k += 1;
         }
         sink(sum.clamp(-32768, 32767) as i16);
     }
@@ -213,13 +239,18 @@ fn event_tick(e: &NoteEvent) -> u32 {
     }
 }
 
-/// 应用一个音符事件(SPEC §9.4 voice 分配与抢占)。
-fn apply_event(voices: &mut [Voice; VOICES], e: &NoteEvent) {
+/// 应用一个音符事件(SPEC §9.4 voice 分配与抢占),返回更新后的活跃 voice 数。
+fn apply_event(
+    voices: &mut [Voice; VOICES],
+    active: &mut [usize; VOICES],
+    mut active_cnt: usize,
+    e: &NoteEvent,
+) -> usize {
     match *e {
         NoteEvent::On { note, .. } => {
             let step = PHASE_STEP[(note - 21) as usize];
             // 1) 最小编号空闲 slot
-            let mut slot = None;
+            let mut slot: Option<usize> = None;
             for (i, v) in voices.iter().enumerate() {
                 if !v.active {
                     slot = Some(i);
@@ -241,6 +272,7 @@ fn apply_event(voices: &mut [Voice; VOICES], e: &NoteEvent) {
                 slot = best.map(|(i, _)| i);
             }
             if let Some(i) = slot {
+                let was_idle = !voices[i].active;
                 voices[i] = Voice {
                     active: true,
                     phase: 0, // Note On 时 phase 归零(SPEC §9.3)
@@ -251,28 +283,28 @@ fn apply_event(voices: &mut [Voice; VOICES], e: &NoteEvent) {
                     release_peak: 0,
                     env: 0,
                 };
+                if was_idle {
+                    active[active_cnt] = i;
+                    active_cnt += 1;
+                }
             }
-            // 理论上不会到这一步:Profile 保证活动音 ≤ 4,8 个 slot 中必然可分配
+            // 理论不会到这一步:Profile 保证活动音 ≤ 4,8 个 slot 中必然可分配
             // (活动音不可抢占是硬约束,故全为 Attack/Sustain 时不可能发生)。
         }
         NoteEvent::Off { note, .. } => {
-            // 找该 note 的活动 voice(Note On 分配后 phase 归零,note 与 voice 一一对应,
-            // 因为同音高不得重复 On(parser 保证);取最小编号的活动 voice 即可)。
-            let mut slot = None;
-            for (i, v) in voices.iter().enumerate() {
-                if v.active && v.step == PHASE_STEP[(note - 21) as usize] {
-                    slot = Some(i);
+            // 找该 note 的活动 voice(同音高不重复 On(parser 保证),step 唯一匹配)。
+            let step = PHASE_STEP[(note - 21) as usize];
+            for v in voices.iter_mut() {
+                if v.active && v.step == step {
+                    v.state = EnvState::Release;
+                    v.release_pos = 0;
+                    v.release_peak = v.env; // 从当前包络值开始线性下降
                     break;
                 }
             }
-            if let Some(i) = slot {
-                let v = &mut voices[i];
-                v.state = EnvState::Release;
-                v.release_pos = 0;
-                v.release_peak = v.env; // 从当前包络值开始线性下降
-            }
         }
     }
+    active_cnt
 }
 
 /// 渲染完整样本序列(native 用;guest 用 `render_stream`)。
