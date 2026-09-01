@@ -1,6 +1,6 @@
 # 实施计划:Music-ZK Exhibit 怎么做
 
-- 状态:v0.1(2026-08-31)
+- 状态:v0.2(2026-09-01,Win 原生迁移后修订)
 - 依据:`PRD.md`、`SPEC.md` Draft v0.1
 - 本文回答一个问题:从零开始,按什么顺序、分几步、先赌哪个风险,把 SPEC 变成能跑的展品。
 
@@ -11,21 +11,23 @@
 | 模块 | 难度 | 说明 |
 |---|---|---|
 | A. 确定性 MIDI 解析 + 整数合成器 | 中 | 纯 Rust 工程问题,规则已在 SPEC §8/§9 写死,量大但不冒险 |
-| B. RISC Zero zkVM 真实证明 | **高,且是唯一硬风险** | 内存/耗时预算、Windows 必须走 WSL2、版本必须锁死 |
+| B. RISC Zero zkVM 真实证明 | **高,且是唯一硬风险** | 内存/耗时预算、**guest 必须 WSL 构建、host 已迁 Win 原生**、版本必须锁死 |
 | C. 日志/签名/API/网页 | 低-中 | 常规 Web 工程,FastAPI + Ed25519 + Merkle,全是成熟零件 |
 
 SPEC §20 已给出关键指令:**M0/M1 先做,基准门不过就砍范围,不许先包 UI**。本计划按此执行,并把 B 的风险压到第一周就见分晓。
 
 ## 2. 两个必须最先做的环境决策
 
-1. **证明环境 = WSL2 Ubuntu(x86-64)**。RISC Zero 官方预构建只支持 x86-64 Linux / arm64 macOS;本机已确认 WSL 可用。所有 Rust/zkVM 构建在 WSL2 内进行,Windows 侧只跑编辑器和浏览器。
-2. **锁版本**:RISC Zero 安装后立即固定 `cargo-risczero` 版本、Rust toolchain(rust-toolchain.toml)、Cargo.lock,guest ELF 的 Image ID 记入 protocol manifest。**永不自动升级**(SPEC §2.1、§17.5)。
+1. **证明环境 = Windows 原生(host)+ WSL2 仅 guest 构建**。2026-09-01 实测:risc0 3.0.6 的 host prove/verify 可在 Win 原生编译运行(CPU 路径过门禁、CUDA feature 已启用);**risc0 guest 工具链无 Windows 二进制,rzup 硬性不可用**,guest ELF(R0BF)仍由 WSL2 构建后入库 `protocol/guest-v1.elf`,host 只加载 ELF 文件。Windows 侧只跑编辑器/浏览器/prove/verify。详情见 `docs/ENV.md`。
+2. **锁版本**:RISC Zero 安装后立即固定 `cargo-risczero` 版本、Rust toolchain(`rust/zkvm-methods/guest/rust-toolchain.toml`)、Cargo.lock,guest ELF 的 Image ID 记入 protocol manifest。**永不自动升级**(SPEC §2.1、§17.5)。
 
 已知偏差:本机系统 Python 是 3.14,SPEC 写 3.12。项目 Python 环境用 conda 创建:`conda create -n music-zk python=3.12 -y`,开工前 `conda activate music-zk`;不使用系统 3.14,也不为它做适配。
 
 ## 3. 里程碑与顺序(带验收动作)
 
 ### Phase 0:冒烟测试(几天)——整项目的 go/no-go
+
+> ✅ **已完成(2026-08-31)**:hello-guest 真实证明 7.31 s / 604 MiB / receipt 216 KiB,独立 verifier 复验通过(B0 入 `docs/benchmarks.md`)。门禁通过,项目形态成立。
 
 目标:在 WSL2 里跑通一个**与音乐无关**的最小 RISC Zero 闭环。
 
@@ -37,6 +39,8 @@ SPEC §20 已给出关键指令:**M0/M1 先做,基准门不过就砍范围,不�
 **不通过怎么办**:这基本否决整个项目形态,立即公开结论,不要继续。
 
 ### Phase 1 = SPEC M0:关系最小闭环(约 1 周)
+
+> ✅ **已完成(2026-09-01,Win 原生)**:framing/journal/Python verifier 全绿;真实证明 CPU 106–120 s、独立 verifier 复验通过;1 正 + 3 负 + dev-mode 编译期硬禁 PASS=5/FAIL=0。**prove/verify 已迁 Windows 原生**,guest 构建保留 WSL(M0-Win 基准入 `docs/benchmarks.md`);protocol_id 已按 SPEC §5 升为 statement-2。
 
 1. `rust/reference-core`:实现 SPEC §7 的三个哈希 framing(`CommitMidi` / `CommitReferenceWav` / `CommitSong`),含域分离与长度前缀;单元测试锁字节。
 2. `zkvm-guest`:读私有 `M`、`r`(env-io),重算 `C_M`,输出 SPEC §6.4 的**定长二进制 journal**(magic `MZKJNL01`,拒绝尾随字节)。
@@ -88,7 +92,7 @@ Phase 1 通过后,C 线(日志/签名/API)不依赖证明性能,可以和 Phase 
 | 风险 | 对策 |
 |---|---|
 | 8 GB 内存/30 分钟证明超预算 | Phase 0/2 两道基准门;segment limit 可调;范围可砍(SPEC 允许) |
-| Windows 原生踩坑 | 一切 Rust/zkVM 工作进 WSL2,不试原生 |
+| Windows 原生 prover 踩坑 | **已趟平(2026-09-01)**:C++ 栈溢出(poly_fp 深递归)→ rayon 64 MiB 栈 + `/STACK`;image_id 字节序陷阱 → 统一 `[u8;32]` 大端构造;guest 工具链无 Win 二进制 → guest 构建保留 WSL,host 加载 R0BF。见 `docs/ENV.md` / `docs/OPEN-QUESTIONS.md` |
 | 合成器跨平台不一致 | 单一 reference-core、纯整数、golden vectors 三方对拍 |
 | guest 内存爆(全 WAV 常驻) | 强制流式 SHA-256;60s 音频仅 ~1 MB,量级安全 |
 | JCS 实现坑 | 签名体字段极简;Python/Rust 交叉测试 |
@@ -97,23 +101,23 @@ Phase 1 通过后,C 线(日志/签名/API)不依赖证明性能,可以和 Phase 
 
 ## 6. Windows 兼容策略
 
-结论:可以兼容,但要按角色分层。"生成证明"是唯一真正依赖 Linux 的环节;WSL2 本身是 Windows 第一方组件,所以 v1 的官方口径是——**prove 环节运行在 WSL2 内,其余全部原生 Windows**。原生 Windows prover 只做一次性实验,用实测数据回答 PRD §16 的开放项,不作为 v1 承诺。
+**2026-09-01 更新:prove/verify 已迁移到 Windows 原生。** 官方口径从"prove 走 WSL2"改为:**host 全链路 Windows 原生(CPU + CUDA),唯一保留在 WSL 的环节是 guest 构建**(risc0 guest 工具链无 Windows 二进制,rzup 硬性不可用)。guest 构建的产物是 R0BF(`protocol/guest-v1.elf`,`scripts/build-guest-wsl.sh`),host 只加载 ELF 文件,因此 prove 端机器完全不需要 rzup/risc0 客户工具链——这同时让老电脑(只有 verify 需求)不依赖 WSL。
 
 ### 6.1 角色 × Windows 需求矩阵
 
 | 角色 | Windows 兼容方式 |
 |---|---|
 | 普通质疑者 | 浏览器 + 证据包,零依赖,天然兼容 |
-| 技术质疑者 | 原生 Windows `verify.exe`:risc0 的 verify 路径是纯 Rust,交叉编译 `x86_64-pc-windows-msvc` 应可行,需在 CI 实测确认 |
+| 技术质疑者 | 原生 Windows `verify.exe`:risc0 verify 路径纯 Rust,已实测 Win 原生编译运行 |
 | 展示者/创作者(非 prove 环节) | 原生 Python 3.12 venv:CLI、FastAPI、SQLite 日志、网页全部跨平台 |
-| 创作者(prove 环节) | WSL2 内运行 Rust prover;Windows CLI 自动检测并透明委托 |
+| 创作者(prove 环节) | **Windows 原生 prover(CPU 已验证、CUDA 已启用)**;WSL 仅在 guest 改动时用于重建 R0BF |
 
-### 6.2 四项落地工作
+### 6.2 四项落地工作(2026-09-01 完成状态)
 
-1. **`scripts/setup-wsl.ps1`**:一键引导——检测/安装 WSL2 + Ubuntu、rustup、rzup,构建 guest,把实测版本号写入 `docs/ENV.md`。
-2. **CLI 透明委托**:`music-zk prove` 在 Windows 上检测 `wsl.exe`,用 `wslpath` 转换路径,经 `wsl -e` 调用 WSL 内的 prover。秘密文件始终留在本机磁盘,经 WSL 互操作文件系统(`/mnt/c`)读取,不经过任何网络,与"proving 断网"的隐私要求一致。用户感知就是一个原生 Windows CLI。
-3. **原生 Windows 验证器**:verifier CLI 以 verify-only feature 编译 Windows 目标,进 GitHub Actions `windows-latest` CI;同一 runner 上跑 `reference-core` golden vectors,顺带证明合成输出跨平台逐字节一致(整数运算 + 共享 Rust core 本身就保证了这一点,CI 只是把它钉死)。
-4. **原生 Windows prover 实验(升级为正式路径,timebox 1–2 天)**:在 `windows-latest` 上尝试编译 risc0-zkvm 的 prove feature。前置改造:**guest ELF 预构建入库**(`protocol/guest-v1.elf`,Image ID 写入 manifest,CI 在 Linux 重建并核对)——这样 prove 端只加载 ELF 文件,Windows 机器完全不需要 rzup/客户工具链。成功 → Windows 无需 WSL 即可证明;失败 → 降级路径见 §6.4。
+1. **`scripts/env-win.ps1`**(已落地):构建前置——导入 MSVC vcvars64 环境、设 `CXXFLAGS=/std:c++20 /DNOMINMAX`、指认 `CUDA_PATH`;构建命令 `cargo +stable-x86_64-pc-windows-msvc build`。注意 dot-source 后须 `$ErrorActionPreference="Continue"`,否则 cargo 的 stderr 进度会被 PowerShell 误判为终止错误而中断构建。
+2. **CLI 透明委托(原方案,已取消)**:不再需要 `music-zk prove` 委托 WSL——prove 已原生跑在 Windows 上。秘密文件仍始终留在本机,与"proving 断网"的隐私要求一致。
+3. **原生 Windows 验证器**(已实测):verifier CLI 编译 Windows 目标并进 GitHub Actions `windows-latest` CI;同一 runner 上跑 `reference-core` golden vectors,钉死合成输出跨平台逐字节一致。
+4. **原生 Windows prover(已完成迁移,升级为正式路径)**:risc0-zkvm prove feature 在 Win 原生编译运行,前置改造即 **guest ELF 预构建入库**(`protocol/guest-v1.elf` R0BF + manifest Image ID,CI 在 Linux 重建并核对)。两条 Win 原生关键坑已解决:C++ 栈溢出(poly_fp 深递归)→ rayon 64 MiB 栈 + `/STACK:0x4000000`;image_id 字节序(`[u32;8]` 与 `[u8;32]` 大小端不同)→ 统一大端 `[u8;32]` 构造 `Digest`。详见 `docs/ENV.md`。
 
 ### 6.4 绕开 WSL 的降级路径(老电脑 / 无法启用虚拟化)
 
@@ -127,7 +131,7 @@ Phase 1 通过后,C 线(日志/签名/API)不依赖证明性能,可以和 Phase 
 
 在此前提下,无法启用 WSL 的机器按序走:
 
-1. **原生 Windows prover**(§6.2 第 4 项成功时):不需要任何虚拟化,瓶颈只剩内存;内存不足就按 SPEC §18 缩短音频(5–15 秒)或调低 segment size limit。
+1. **原生 Windows prover(已上线)**:不需要任何虚拟化,瓶颈只剩内存;内存不足就按 SPEC §18 缩短音频(5–15 秒)或调低 segment size limit。guest 构建是本机一次性动作(或 CI 产物),老电脑只消费 R0BF。
 2. **Linux Live USB 兜底**(不依赖虚拟化、不装系统、不动硬盘):把 prover 以静态链接 Linux 二进制发布,创作者从 U 盘启动 Ubuntu live,完全离线生成证明后拷回结果。比 WSL2 兼容面更宽(只需 64 位 CPU,不需要 VT-x、不需要 Win10 1903+),且天然满足"proving 断网"。配套 `docs/LIVE-USB.md` + 构建脚本。
 3. **证明/验证分离的演示模式**:证明是**一次性的公开数据**——receipt、journal、证据包都可以在任何一台有能力的机器上生成,然后搬运到老电脑上做展示。老电脑只跑原生验证器(秒级、低内存),密码学强度不打折,完全符合产品语义(验证者本来就不需要证明能力)。
 
@@ -139,23 +143,27 @@ Phase 1 通过后,C 线(日志/签名/API)不依赖证明性能,可以和 Phase 
 
 ### 6.3 边界与不做的事
 
-- WSL1 不可用,必须 WSL2(工具链与文件系统语义)。
+- **guest 构建必须 WSL2**(工具链与文件系统语义;risc0 guest 工具链无 Windows 二进制,rzup 硬性不可用)。host 侧不依赖 WSL。
 - 私密目录权限:Windows 没有 POSIX 权限位,用用户目录 + ACL(`icacls` 或 API)近似 SPEC §10.1 的"仅当前用户可读",README 说明差异。
 - **禁止**用远程 prover 给 Windows 用户兜底——PRD §13.2 隐私红线,远程 prover 看得见 witness。
 - 不为 Windows 换技术栈:SP1 无零知识性,手写 halo2 电路等价于推翻重来,均非 v1 选项。
 
 ## 7. 下一步(具体到命令)
 
-```bash
-# 1. WSL2 内
-wsl -d Ubuntu
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-cargo install cargo-risczero && rzup install   # 记录版本号进 docs/ENV.md
+```powershell
+# 0. 构建前置(每个新 shell 一次):导入 MSVC + CUDA 环境
+. .\scripts\env-win.ps1
+# 注:dot-source 后务必 $ErrorActionPreference="Continue",否则 cargo stderr 进度被误杀
 
-# 2. 建工作区骨架(本仓库)
-mkdir -p music_zk/{cli,server,protocol,verifier,web} rust/{reference-core,reference-native,zkvm-guest,zkvm-host} protocol/golden-vectors examples/twinkle-v1 tests
+# 1. host 构建/测试(Windows 原生)
+cargo +stable-x86_64-pc-windows-msvc build -p zkvm-host
+cargo +stable-x86_64-pc-windows-msvc test
 
-# 3. 跑 Phase 0 hello-guest,记录数字,决定继续
+# 2. guest 改动后重建 R0BF(WSL 侧;不常改)
+bash scripts/build-guest-wsl.sh   # 产物 protocol/guest-v1.elf;核对 Image ID 是否变化
+
+# 3. 跑基准/门禁
+powershell -ExecutionPolicy Bypass -File scripts/phase1-m0.ps1
 ```
 
-工作量粗估(单人):Phase 0–1 约 1.5 周,Phase 2 约 2 周,Phase 3 约 2 周,Phase 4–5 约 1.5 周,合计 6–7 周;其中 Phase 0 结束即可知道项目是否成立。
+工作量粗估(单人):Phase 1 已完成;Phase 2 约 2 周,Phase 3 约 2 周,Phase 4–5 约 1.5 周,合计剩余 5–6 周;其中 Phase 2 门禁(30 秒负载 ≤60 分钟真实证明)是下一个风险检查点。

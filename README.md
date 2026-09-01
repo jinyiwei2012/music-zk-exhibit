@@ -16,18 +16,20 @@
 
 ## 状态
 
-**Phase 1(SPEC M0 关系最小闭环)已完成 · 2026-08-31**([门禁 1 正 4 负通过](scripts/phase1-m0.sh))
+**Phase 1(SPEC M0 关系最小闭环)已完成 · 2026-09-01(Windows 原生门禁 1 正 4 负通过)**
 
 - `reference-core`:三个哈希 framing + 202 字节 journal 编解码,Rust 与 Python 逐字节对拍一致
-- zkVM guest 重算 `C_M` 输出 journal;host 真实证明 + 独立 verifier 复验(dev mode 拒绝)
+- zkVM guest 重算 `C_M` 输出 journal;host 真实证明 + 独立 verifier 复验(dev mode 编译期硬禁)
 - 负向测试:改 M 一字节 / 错盐 / 错 Image ID / dev-mode 收据,全部拒绝
-- 产物:`protocol/guest-v1.elf` + `protocol/v1.json` manifest;基准入 `docs/benchmarks.md`
+- **prove/verify 已迁移到 Windows 原生**(CPU 门禁绿,CUDA 路径已启用);guest 构建保留 WSL(R0BF 入库)
+- protocol_id 已按 SPEC §5 升级:`music-zk-exhibit/midi-profile-1/reference-synth-1/statement-2`
+- 产物:`protocol/guest-v1.elf`(R0BF)+ `protocol/v1.json` manifest;基准入 `docs/benchmarks.md`
 
 **进行中:Phase 2(SPEC M1)**——MIDI Profile 1 解析器 + ReferenceSynth 1 纯整数合成 + golden vectors ×6。
 
 ## 环境要求(已实测)
 
-- 本地 proving 需 Linux(x86-64)或 macOS(arm64);Windows 经 WSL2(第一方组件)运行 prove 环节,CLI 自动委托,其余部分原生 Windows;详见 [docs/PLAN.md §6](docs/PLAN.md)
-- Python 3.12(conda env `music-zk`);Rust 稳定版 + risc0 toolchain 1.97.0
+- **本地 proving 为 Windows 原生**(x86-64,MSVC + CUDA 12.4.1);guest 构建仍需 WSL2(risc0 工具链无 Windows 二进制),但产物预构建入库,prove 端不依赖 WSL;详见 [docs/PLAN.md §6](docs/PLAN.md) 与 [docs/ENV.md](docs/ENV.md)
+- Python 3.12(conda env `music-zk`);Windows Rust 稳定版(`stable-x86_64-pc-windows-msvc`)+ WSL risc0 toolchain 1.97.0(仅 guest)
 - RISC Zero zkVM 3.0.6(版本已冻结,不得跟随 latest);版本事实表见 [docs/ENV.md](docs/ENV.md)
-- 基准:B0 hello-guest 7.31 s / 604 MiB;M0 闭环 9.30 s / 606 MiB([docs/benchmarks.md](docs/benchmarks.md))
+- 基准:B0 hello-guest(WSL)7.31 s / 604 MiB;M0(WSL)9.30 s / 606 MiB;**M0-Win 原生 CPU 106–120 s**;CUDA 基准待补([docs/benchmarks.md](docs/benchmarks.md))

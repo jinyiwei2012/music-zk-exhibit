@@ -23,21 +23,24 @@
 6. **禁止 git add -f** 绕过 `.gitignore`;私密文件(密钥、盐、MIDI)永不入库。
 7. **阶段门禁**(§5)不过不许进下一阶段;基准门不过就缩范围并公开记录,不许用假收据糊弄。
 
-## 2. 本机环境事实(2026-08-31 实测)
+## 2. 本机环境事实(2026-09-01 实测,Win 原生迁移后)
 
-- Windows(build 10.0.28120),Git Bash;git 2.55.0
+- Windows(build 10.0.28120),Git Bash + PowerShell;git 2.55.0
 - 系统全局 Python 3.14.6(**不使用**)← 项目环境用 conda:`music-zk`(Python 3.12)。**用户可能在启动 agent 前已手动激活**,agent 必须先按 §8 第一条自检当前是否处于虚拟环境再行动;所有 Python 工作(CLI/server/verifier/tests)都必须在 `music-zk` 内
-- Rust 1.97.1 / cargo 1.97.1(WSL 内需另装)
-- WSL 可用 ← Rust/zkVM 全部工作在 WSL2 内进行
-- 仓库已存在:`main` 分支,仅文档;`.gitignore` 已覆盖私密与构建产物
+- **Rust(Windows 原生)**:rustup 1.29.0,工具链 `stable-x86_64-pc-windows-msvc`(1.98.0);VS Build Tools 18(VC 14.51 + SDK 10.0.26100);CUDA Toolkit 12.4.1(与 WSL 侧一致);RTX 4060 8GB
+- **prove/verify 全部 Windows 原生**(CPU 1 正 4 负门禁绿;CUDA feature 已启用)。构建前 `. .\scripts\env-win.ps1`(见 docs/ENV.md)
+- **guest 构建仍只在 WSL**(risc0 工具链无 Windows 二进制;rzup 硬性不可用):`bash scripts/build-guest-wsl.sh` → 产物 R0BF 入库 `protocol/guest-v1.elf`
+- 仓库:`main` 分支;`.gitignore` 已覆盖私密与构建产物
 
 ## 3. 冻结常量(直接抄进代码,一个字符都不许改)
 
 ### 3.1 protocol_id
 
 ```text
-music-zk-exhibit/midi-profile-1/reference-synth-1/statement-1
+music-zk-exhibit/midi-profile-1/reference-synth-1/statement-2
 ```
+
+> statement-1 = Phase 1 M0 guest(重算 C_M);**statement-2 = Phase 2 完整 guest(MIDI Profile 1 + ReferenceSynth 1)**,2026-09-01 Win 原生迁移时按 SPEC §5 升级(Image ID `5e06801b...`,见 protocol/v1.json)。
 
 ### 3.2 哈希 framing(SPEC §7;`||` 为字节拼接,U64BE 为 8 字节大端长度)
 
@@ -141,7 +144,7 @@ scripts/
 - [ ] Python verifier 骨架:验 receipt、journal、Image ID
 - [ ] 负向测试:改 M 一字节 / 错盐 / 错 Image ID / dev-mode 收据 → 全部失败
 - [ ] guest ELF 入库 `protocol/guest-v1.elf`,Image ID 写 manifest
-- [ ] (timebox 2 天)Windows 原生 prove feature 编译实验 → 结论记 `docs/ENV.md`
+- [x] (2026-09-01 已完成)Windows 原生 prove feature 编译实验 → **结论:可行,prove/verify 已迁 Win 原生**(CPU 1 正 4 负门禁绿;C++ 栈修复 + image_id 字节序修复,详见 `docs/ENV.md` 与 `docs/OPEN-QUESTIONS.md`)
 
 **门禁**:一条脚本演示 1 正 4 负全部符合预期;`cargo test` + `pytest` 绿。
 
@@ -192,7 +195,7 @@ scripts/
 
 ## 7. Windows / 老电脑交付形态(不改变以上任何协议)
 
-prove 走 WSL2(第一方组件)+ CLI 自动委托;其余全部原生 Windows;原生 prover 实验结果决定是否免除 WSL;WSL 不可用的机器走 `docs/PLAN.md §6.4`:Live USB 静态 prover 或"证明一次生成、证据包搬运、老电脑只验证"。验证器编译 Windows 原生目标进 CI。
+**prove/verify 已迁移到 Windows 原生**(2026-09-01 实测:CPU 1 正 4 负门禁绿,CUDA feature 启用;栈溢出/字节序等坑与解法见 docs/ENV.md)。**唯一保留在 WSL 的环节是 guest 构建**(risc0 工具链无 Windows 二进制,rzup 硬性不可用):`bash scripts/build-guest-wsl.sh` 生成 R0BF 入库。WSL 不可用的机器走 `docs/PLAN.md §6.4`:Live USB 静态 prover 或"证明一次生成、证据包搬运、老电脑只验证"。验证器编译 Windows 原生目标进 CI。
 
 ## 8. 工作约定
 
@@ -207,10 +210,9 @@ prove 走 WSL2(第一方组件)+ CLI 自动委托;其余全部原生 Windows;原
 
 ## 9. 当前状态与你的第一步
 
-- 仓库:`main`,HEAD 含 PRD/SPEC/ZKP_EXPLAINED/README/PLAN/.gitignore 及 Phase 0 代码(rust/ workspace)
-- 环境:§2 所列;conda env `music-zk`(Python 3.12.14)已创建;**WSL2 工具链已装齐**(rustup/cargo-risczero/risc0 工具链,版本与接线见 `docs/ENV.md`)
-- **Phase 0 已过门禁**(2026-08-31):hello-guest 真实证明 7.31 s / 604 MiB / receipt 216 KiB,独立 verifier 复验通过;数字见 `docs/benchmarks.md`
+- 仓库:`main`,HEAD 含 PRD/SPEC/ZKP_EXPLAINED/README/PLAN/.gitignore、Phase 0–1 代码(rust/ workspace)与 Win 原生迁移产物。
+- 环境:§2 所列;conda env `music-zk`(Python 3.12.14);**prove/verify 已迁 Windows 原生**(构建前置 `. .\scripts\env-win.ps1`);WSL2 仅用于 guest 构建(`bash scripts/build-guest-wsl.sh`),工具链版本与接线见 `docs/ENV.md`。
+- **Phase 1 = SPEC M0 已过门禁**(2026-09-01,Win 原生):真实证明(C_M=`0717cc99...`)CPU 106–120 s,独立 verifier 复验通过;1 正 + 3 负 + dev-mode 编译期硬禁(共 5 项)PASS=5/FAIL=0;数字见 `docs/benchmarks.md`。
+- **protocol_id 已按 SPEC §5 升为 statement-2**(Phase 2 完整 guest 的 Image ID `5e06801b...`,见 `protocol/v1.json`)。
 
-**第一步(现在做)**:读 SPEC §3/§6,开始 Phase 1 = SPEC M0 关系最小闭环(reference-core framing → guest 重算 C_M → 202 字节 journal → Python verifier 骨架 → 1 正 4 负)。WSL 内执行 Rust 命令前先 `source ~/.zk-env.sh`(代理/镜像/CARGO_TARGET_DIR,见 ENV.md)。
-
-完成 Phase 1 门禁后向用户汇报,再继续 Phase 2。
+**第一步(现在做)**:读 SPEC §8/§9,开始 Phase 2 = SPEC M1(reference-core 的 MIDI Profile 1 parser + ReferenceSynth 1 纯整数合成 → golden vectors ×6 → 基准 B1/B2)。Rust 构建在 Windows 原生进行;guest 改动后须在 WSL 重建 R0BF 并核对 Image ID 是否变化。

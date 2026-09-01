@@ -30,8 +30,27 @@
 | receipt 大小 | **221,614 B ≈ 216 KiB**(bincode 序列化) |
 | 独立验证 | `zkvm-verify` 独立进程复验通过;1 正 4 负门禁演示 `scripts/phase1-m0.sh` 全过 |
 
+## M0-Win — 关系最小闭环(Phase 1 门禁,Windows 原生 CPU)
+
+| 项 | 值 |
+|----|----|
+| 日期 | 2026-09-01 |
+| 机器 | Windows 10.0.28120 原生(MSVC);Intel Core Ultra 9 185H(16 核);RTX 4060 Laptop 8GB(**CPU 路径**) |
+| 构建 | `cargo +stable-x86_64-pc-windows-msvc`;risc0-zkvm 3.0.6;`disable-dev-mode` feature;栈修复(rayon 64 MiB + `/STACK:0x4000000`) |
+| 负载 | 同 M0:输入 `U64BE(len(M)) || M || r`(M=14 B,r=32 B),重算 `CommitMidi` + 输出定长 202 B journal |
+| 证明耗时 | **106–120 s**(wall,多次测量) |
+| 峰值内存 | 未单独记录(约 ≤8 GB 预算内) |
+| guest 统计 | 同 M0(65536 total_cycles / 31307 user_cycles / 1 segment) |
+| receipt 大小 | 与 M0 同量级 ≈ 216 KiB(bincode) |
+| 独立验证 | `zkvm-verify` 独立进程复验通过;门禁 `scripts/phase1-m0.ps1` PASS=5/FAIL=0(1 正 + 3 负 + dev-mode 编译期硬禁) |
+| journal 值 | C_M=`0717cc99...`、C_V=`24984545...`(与 golden vector 一致) |
+| protocol_id | `music-zk-exhibit/midi-profile-1/reference-synth-1/statement-2`(Image ID `5e06801b...`) |
+
+> **与 WSL 对比**:WSL CPU 9.30 s / 606 MiB;Win 原生 CPU 106–120 s——**慢一个数量级**(多核并行度/调度差异),门禁仍绿。CUDA 路径基准待 `cuda` feature 构建验证后补录。
+
 ## 备注
 
-- 首次 prove 未见额外参数下载,default_prover 本地直接出真实 STARK 证明(非 dev-mode:receipt 含完整 seal,时序 7.31 s)。
-- **内存约束**:WSL2 默认上限 11 GiB。Phase 2 的 B1(15 s/4 声部)负载若触发内存瓶颈,先调低 segment size limit;再不行按 PLAN.md 规则缩范围并公开记录(不得假收据)。
+- **WSL 行(B0/M0)为历史记录**:2026-09-01 起 prove/verify 已迁 Windows 原生,新基准一律 Win 原生出数;WSL 仅用于 guest 构建。
+- 首次 prove 未见额外参数下载,default_prover 本地直接出真实 STARK 证明(非 dev-mode:receipt 含完整 seal)。
+- **内存约束**:Win 原生不受 WSL 11 GiB 上限约束(物理 8 GB)。Phase 2 的 B1(15 s/4 声部)负载若触发内存瓶颈,先调低 segment size limit;再不行按 PLAN.md 规则缩范围并公开记录(不得假收据)。
 - 证明产物写入 `proof-work/`(gitignore),不入库。

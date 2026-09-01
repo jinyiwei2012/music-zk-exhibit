@@ -2,7 +2,7 @@
 
 > 约定见 docs/AGENTS.md 格式。每行 = `组件 | 版本 | 实测日期 | 来源命令`;环境版本变更追加新行,不改旧行。
 
-## WSL2(prove 环境)
+## WSL2(guest 构建环境,2026-09-01 起不再承担 prove/verify)
 
 | 组件 | 版本 | 实测日期 | 来源命令 |
 |------|------|----------|----------|
@@ -24,8 +24,24 @@
 | Windows build | 10.0.28120 | 2026-08-31 | 根 AGENTS.md §2 |
 | git | 2.55.0 | 2026-08-31 | 根 AGENTS.md §2 |
 | conda env music-zk | Python 3.12.14 | 2026-08-31 | 根 AGENTS.md §2 |
+| rustup | 1.29.0 | 2026-09-01 | `rustup --version` |
+| cargo(msvc) | 1.98.0 | 2026-09-01 | `cargo +stable-x86_64-pc-windows-msvc --version` |
+| rustc(msvc) | 1.98.0 | 2026-09-01 | `rustc +stable-x86_64-pc-windows-msvc --version` |
+| MSVC(Build Tools 18) | VC Tools 14.51.36231 / SDK 10.0.26100 | 2026-09-01 | `vswhere -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64` |
+| CUDA Toolkit(Windows) | **12.4.1(V12.4.131,与 WSL 侧一致)** | 2026-09-01 | `nvcc --version`;安装路径 `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4` |
+| NVIDIA 驱动 | 610.88 / CUDA UMD 13.3 | 2026-08-31 | `nvidia-smi` |
+| GPU | RTX 4060 Laptop 8GB + Intel Arc | 2026-08-31 | `nvidia-smi` |
 
-## 工具链接线(2026-08-31 手动安装;勿删,CI/新机器照此复现)
+## Windows 原生(2026-09-01 起,Win 原生迁移后的 build/prove 环境)
+
+- **prove/verify 全部 Windows 原生**(CPU 已验证 1 正 4 负;CUDA 路径启用 `cuda` feature)。
+- **guest 构建仍只在 WSL**(risc0 工具链无 Windows 二进制;rzup 硬性不可用),产物 R0BF 入库 `protocol/guest-v1.elf`。
+- 构建前置:`powershell` 里 `. .\scripts\env-win.ps1`(导入 vcvars64 环境 + `CXXFLAGS=/std:c++20 /DNOMINMAX` + CUDA_PATH),再 `cargo +stable-x86_64-pc-windows-msvc build`。
+- 栈溢出规避(risc0 C++ poly_fp 深递归巨帧):代码内 `rayon::ThreadPoolBuilder::stack_size(64MiB).build_global()` + `rust/.cargo/config.toml` 的 `/STACK:0x4000000` + `RUST_MIN_STACK=64MiB`。
+- **image_id 字节序陷阱**:`receipt.verify()` 的 image_id 必须用 `[u8;32]` 大端字节构造 `Digest`(`[u32;8].into()` 走 word 直拷,字节序不同会误报 ClaimDigestMismatch)。记录于 OPEN-QUESTIONS。
+- 构建时的 `RECURSION_SRC_PATH` 环境变量指向本地 `recursion_zkr.zip`(risc0-circuit-recursion 下载 S3 被代理损坏,手动下载校验 SHA256 通过;临时目录 `%TEMP%\opencode\recursion_zkr.zip`)。
+
+## 工具链接线(WSL 侧 guest 构建,2026-08-31 手动安装;勿删,CI/新机器照此复现)
 
 - 本机 GitHub 直连被阻断;组件全部经镜像落地:
   - cargo-risczero / r0vm:ghfast.top 镜像下载 `v3.0.6/cargo-risczero-x86_64-unknown-linux-gnu.tgz` → 解压安装到 `~/.risc0/bin/`
@@ -47,5 +63,5 @@
 
 ## 版本锁定(红线 5)
 
-- `rust/rust-toolchain.toml` 固定 `risc0-1.97.0`;Cargo.lock 自 Phase 1 起入库冻结。
-- 任何影响协议行为的变化必须产生新 `protocol_id`(SPEC §5);与协议无关的升级也要先在本表追加行再动。
+- `rust/zkvm-methods/guest/rust-toolchain.toml` 固定 `risc0-1.97.0`(仅 guest 构建使用;Windows 宿主用 `stable-x86_64-pc-windows-msvc`);Cargo.lock 入库冻结。
+- guest 产物 `protocol/guest-v1.elf`(R0BF 格式)与 Image ID(`protocol/v1.json` 的 `guest.image_id`)冻结后不得改动;任何影响协议行为的变化必须产生新 `protocol_id`(SPEC §5);与协议无关的升级也要先在本表追加行再动。
