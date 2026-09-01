@@ -2,12 +2,14 @@
 #
 # 两个 job:
 #   1) guest-reproducible-build(ubuntu):干净环境**两次**构建 guest,
-#      两次 R0BF 的 Image ID 必须一致,且与 protocol/v1.json 冻结值一致(§17.5 门禁)。
+#      两次 R0BF 的 SHA-256 必须一致(字节级确定 ⇒ Image ID 一致),且与
+#      protocol/v1.json 的 guest.elf_sha256 冻结值一致(§17.5 门禁)。
+#      [本地实测 2026-09-01:双构建 + 与冻结值三方逐字节一致]
 #   2) verifier-pytest(windows):纯 CPU(无 CUDA)构建 zkvm-prove/verify + reference-native,
 #      全量 pytest + 对入库真实收据做密码学复验(红线 2:非 dev-mode)。
 #
 # 版本冻结(红线 5):rust-toolchain.toml 固定 risc0-1.97.0;guest Cargo.lock 与
-# 工作区 Cargo.lock 均入库;guest Image ID 变更必须同步 protocol/v1.json + 新 protocol_id,
+# 工作区 Cargo.lock 均入库;guest 变更必须同步 protocol/v1.json + 新 protocol_id,
 # 不得悄悄替换(§17.5 末条)。
 name: CI
 
@@ -29,52 +31,54 @@ jobs:
           curl -L https://risczero.com/install | bash
           echo "$HOME/.risc0/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.risc0/bin:$PATH"
-          rzup install rust 2>&1 | tail -5          # 按 rust-toolchain.toml → risc0-1.97.0
-          rzup install cargo-risczero 2>&1 | tail -5 # 提供 r0vm(Image ID 计算)
-          rzup --version
+          rzup install rust 2>&1 | tail -5          # 按 rust-toolchain.toml → risc0 1.97.0
+          # rzup 把工具链命名为 "risc0",而 rust-toolchain.toml 锁定 "risc0-1.97.0",
+          # 建链接让 cargo 能解析(本地 WSL 亦如此,见 docs/ENV.md)
+          TC_DIR="$(ls -d "$HOME"/.risc0/toolchains/*/ 2>/dev/null | head -1)"
+          test -n "$TC_DIR" || { echo "缺少 risc0 toolchain 目录"; exit 1; }
+          rustup toolchain link risc0-1.97.0 "$TC_DIR"
           rustup toolchain list
-          r0vm --version
+          rustc +risc0-1.97.0 --version
 
-      - name: 构建 guest(第一次)
+      - name: 构建 guest(第一次,干净 target 目录)
         working-directory: rust/zkvm-methods/guest
         run: |
           CARGO_TARGET_DIR=/tmp/guest-target-1 \
             cargo build --locked --release --target riscv32im-risc0-zkvm-elf
 
-      - name: 构建 guest(第二次,干净 target 目录)
+      - name: 构建 guest(第二次,另一干净 target 目录)
         working-directory: rust/zkvm-methods/guest
         run: |
           CARGO_TARGET_DIR=/tmp/guest-target-2 \
             cargo build --locked --release --target riscv32im-risc0-zkvm-elf
 
-      - name: 转换 R0BF + 计算 Image ID(两次)
+      - name: 转换 R0BF + 计算 SHA-256(两次)
         run: |
           cd rust
-          cargo build --locked -p elf2r0bf
+          # CARGO_TARGET_DIR 覆盖 rust/.cargo/config.toml 的 Windows 专用 target-dir(§17.5 干净环境)
+          CARGO_TARGET_DIR=/tmp/elf2r0bf-target cargo +stable build --locked -p elf2r0bf
           for T in 1 2; do
             USER_ELF="/tmp/guest-target-$T/riscv32im-risc0-zkvm-elf/release/zkvm-guest"
             test -f "$USER_ELF" || { echo "缺 $USER_ELF"; exit 1; }
-            ./target/debug/elf2r0bf "$USER_ELF" "/tmp/guest-$T.r0bf"
-            IMG="$($HOME/.risc0/bin/r0vm --elf "/tmp/guest-$T.r0bf" --id 2>/dev/null | tail -1)"
+            /tmp/elf2r0bf-target/debug/elf2r0bf "$USER_ELF" "/tmp/guest-$T.r0bf"
             SHA="$(sha256sum "/tmp/guest-$T.r0bf" | cut -d' ' -f1)"
-            echo "build $T: image_id=$IMG sha256=$SHA"
-            echo "$IMG" > "/tmp/img-$T.txt"
+            echo "build $T: sha256=$SHA"
+            echo "$SHA" > "/tmp/sha-$T.txt"
           done
 
-      - name: 门禁——两次 Image ID 一致 + 与 manifest 一致(§17.5)
+      - name: 门禁——两次 SHA-256 一致 + 与 manifest 冻结值一致(§17.5)
         run: |
-          A="$(cat /tmp/img-1.txt)"; B="$(cat /tmp/img-2.txt)"
+          A="$(cat /tmp/sha-1.txt)"; B="$(cat /tmp/sha-2.txt)"
           echo "第一次: $A"; echo "第二次: $B"
-          test "$A" = "$B" || { echo "FAIL:两次构建 Image ID 不一致"; exit 1; }
-          grep -q "$A" protocol/v1.json || { echo "FAIL:Image ID 与 protocol/v1.json 冻结值不一致"; exit 1; }
-          echo "PASS:双构建 Image ID 一致且与 manifest 冻结值一致"
+          test "$A" = "$B" || { echo "FAIL:两次构建 R0BF 不一致 ⇒ Image ID 不一致"; exit 1; }
+          FROZEN="$(grep -o '"elf_sha256": "[0-9a-f]*"' protocol/v1.json | grep -o '[0-9a-f]\{64\}')"
+          echo "manifest: $FROZEN"
+          test "$A" = "$FROZEN" || { echo "FAIL:与 manifest guest.elf_sha256 冻结值不一致 ⇒ Image ID 不复现"; exit 1; }
+          echo "PASS:双构建 R0BF 字节一致且与冻结产物一致 ⇒ Image ID(5e06801b...)被严格复现"
 
   verifier-pytest:
     name: verifier 构建 + pytest + 真实收据复验(windows)
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: rust
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/rust/target-ci
     steps:
@@ -85,30 +89,31 @@ jobs:
           python-version: "3.12"
 
       - name: 安装 Python 依赖(server+dev)
-        working-directory: .
+        working-directory: ${{ github.workspace }}
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[server,dev]"
 
       - name: 纯 CPU 构建 verifier(无 CUDA,CI 无 GPU;disable-dev-mode 已内置)
+        working-directory: ${{ github.workspace }}/rust
         run: |
           cargo build --locked --no-default-features -p zkvm-host --bins -p reference-native
           Get-ChildItem target-ci/debug/zkvm-verify.exe, target-ci/debug/reference-native.exe | Select-Object Name, Length
 
       - name: 真实收据密码学复验(入库 fixture,无 witness 模式)
-        working-directory: ../tests/fixtures/ci-verify
+        working-directory: ${{ github.workspace }}/tests/fixtures/ci-verify
         run: |
           & "$env:GITHUB_WORKSPACE/rust/target-ci/debug/zkvm-verify.exe" `
             --expect-image-id 5e06801b5e97e4c3d7bcbc99bf5432ff3fc4056a9cf71b4175038a7e895c7d8a `
             --expect-c-v 2498454557a1603b8d5b47ebd4f135103c62266534e829a9d5370f1f7ae4c4f9
 
       - name: 守卫——fixtures 不得含 witness(红线 1)
-        working-directory: .
+        working-directory: ${{ github.workspace }}
         run: |
           $w = @("tests/fixtures/ci-verify/midi.bin", "tests/fixtures/ci-verify/salt.bin")
           foreach ($f in $w) { if (Test-Path $f) { Write-Error "fixture 含 witness: $f"; exit 1 } }
           Write-Host "OK:fixtures 无 witness"
 
       - name: 全量 pytest(§6 测试基线)
-        working-directory: .
+        working-directory: ${{ github.workspace }}
         run: python -m pytest tests/ -q
