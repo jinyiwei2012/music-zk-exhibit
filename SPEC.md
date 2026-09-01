@@ -107,8 +107,10 @@ music-zk-exhibit/
 `protocol_id` 采用固定 ASCII：
 
 ```text
-music-zk-exhibit/midi-profile-1/reference-synth-1/statement-1
+music-zk-exhibit/midi-profile-1/reference-synth-1/statement-2
 ```
+
+> `statement-1` = M0 guest(仅重算 C_M);`statement-2` = Phase 2 完整 guest(MIDI Profile 1 + ReferenceSynth 1),按本 § 版本治理于 2026-09-01 升级(Image ID `5e06801b...`)。旧 `statement-1` 值保留于 git 历史,verifier 不向后兼容(每次升级都按本 § 记录)。
 
 协议 manifest MUST 至少包含：
 

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import hashlib
 
-# protocol_id(SPEC §5 / AGENTS.md §3.1,一个字符都不许改)
-PROTOCOL_ID = "music-zk-exhibit/midi-profile-1/reference-synth-1/statement-1"
+# protocol_id(SPEC §5 / AGENTS.md §3.1,一个字符都不许改;2026-09-01 升为 statement-2)
+PROTOCOL_ID = "music-zk-exhibit/midi-profile-1/reference-synth-1/statement-2"
 
 # 域分离前缀(ASCII 字面量中的 \\x00 是真实 0x00 字节)
 MIDI_COMMIT_PREFIX = b"MUSIC-ZK\x00MIDI-COMMIT\x00V1\x00"

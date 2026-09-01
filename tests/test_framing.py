@@ -43,7 +43,7 @@ def test_commit_song_known_vector() -> None:
 
 
 def test_protocol_hash_known_vector() -> None:
-    expect = bytes.fromhex("a0100df46490629dc24ac5e6d0715564302fbc7c8ee676d6f65c264fba678e05")
+    expect = bytes.fromhex("ecbd2763a2307149207dc579579458956dc6ecad8237f9d73301bab7ac0c6da5")
     assert protocol_hash(PROTOCOL_ID) == expect
 
 

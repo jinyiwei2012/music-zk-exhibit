@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
-  "protocol_id": "music-zk-exhibit/midi-profile-1/reference-synth-1/statement-1",
-  "phase": "m0",
+  "protocol_id": "music-zk-exhibit/midi-profile-1/reference-synth-1/statement-2",
+  "phase": "m1",
   "hash_framing": {
     "version": "v1",
     "length_prefix": "U64BE",
@@ -15,19 +15,37 @@
   },
   "midi_profile": {
     "id": "midi-profile-1",
-    "implementation_status": "m0 placeholder,Phase 2 实现并冻结参数",
-    "params": null
+    "implementation_status": "Phase 2 实现(parser fail-closed,SPEC §8 全量拒绝测试绿)",
+    "params": {
+      "format": "SMF Format 0, ntrks=1",
+      "division": 480,
+      "max_file_bytes": 65536,
+      "note_range": [21, 108],
+      "max_note_ons": 256,
+      "max_simultaneous_voices": 4,
+      "max_last_note_off_tick": 57600
+    }
   },
   "reference_synth": {
     "id": "reference-synth-1",
-    "implementation_status": "m0 placeholder,Phase 2 实现并冻结参数",
-    "wavetable_sha256": null,
-    "params": null
+    "implementation_status": "Phase 2 实现(纯整数流式合成,SPEC §9 冻结)",
+    "wavetable_sha256": "0dad18214b59da1eddd86aa30868189f2881aee9f3cb3cd11540203059fda6cd",
+    "params": {
+      "sample_rate": 8000,
+      "channels": 1,
+      "bits_per_sample": 16,
+      "wavetable_points": 2048,
+      "peak_per_voice": 3500,
+      "attack_samples": 320,
+      "release_samples": 960,
+      "voices": 8,
+      "tail_ms": 120
+    }
   },
   "guest": {
-    "source_commit": "a74c64870276eb5cb1f2f83f29ba505a00576c92",
-    "elf_sha256": "b118e73f32c8e5338babdf981ecb8ba14efa877cc3fb088d6659a4571b85ebbf",
-    "image_id": "f75836df6efa7464738a9c19119b1e7aeebb7e97cd2e0520b627bfeb1b662045",
+    "source_commit": "40c7ffe (Phase 2 guest: MIDI Profile 1 + ReferenceSynth 1;工作区另有未提交改动)",
+    "elf_sha256": "ce00d244e68735f15c32778051317d5da1992d42a3b06c7f92ce6d86fddc3dff",
+    "image_id": "5e06801b5e97e4c3d7bcbc99bf5432ff3fc4056a9cf71b4175038a7e895c7d8a",
     "image_id_encoding": "hex of 32 bytes (big-endian per 4-byte word)",
     "rust_toolchain": "risc0-1.97.0 (rustc 1.97.0-dev e638c6cfe)",
     "cargo_version": "1.98.0",
