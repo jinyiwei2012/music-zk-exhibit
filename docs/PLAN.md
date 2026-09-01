@@ -80,9 +80,11 @@ SPEC §20 已给出关键指令:**M0/M1 先做,基准门不过就砍范围,不�
 
 ### Phase 5 = SPEC M4:审查收尾(几天)**← 当前阶段(2026-09-01 起)**
 
-- 隐私扫描:全库 grep 私密字节、断网 proving 测试、崩溃残留检查(SPEC §17.4)。
-- 可复现构建:CI 干净环境双构建,两次 Image ID 一致;README 给出源码算 Image ID 的命令。
-- 性能报告、`ENV.md`、演示脚本定稿。
+- [x] 隐私扫描三件套(§17.4):`scripts/privacy-scan.py` 字节级扫描零命中;`scripts/offline-prove-test.ps1` 防火墙阻断全出站后真实证明+复验通过;`tests/test_privacy.py` 上传失败临时目录零残留 + 黑名单运行时拒绝 + 存储/证据 zip 无私密字节(4 测试绿)
+- [x] 性能报告:B0(5s/1v)87.1 s 入册;B1/B2/B3 验证时间补测(19.0/38.2/107.4 s);PRD §13.3 差距表诚实公开(60s 三项目标未达,最低基线达标)
+- [ ] CI(§17.5):`.github/workflows/ci.yml`(ubuntu 双构建 guest Image ID 一致门禁 + windows 纯 CPU verifier/pytest/真实收据复验)已入,**待首次 push 跑绿**
+- [ ] README 状态段定稿、隐私扫描/断网脚本说明
+- [ ] PRD §13.2、§13.3 门禁复核
 
 ## 4. 并行线
 

@@ -186,11 +186,13 @@ scripts/
 
 ### Phase 5 = SPEC M4:审查收尾
 
-- [ ] 隐私扫描(SPEC §17.4:数据库/日志/zip 全 grep 私密字节;断网 proving;崩溃残留)
-- [ ] CI:干净环境双构建 Image ID 一致;windows-latest 跑 verifier 构建 + golden vectors(+ 可选 prover 实验)
-- [ ] 性能报告 B0–B3 全量入册;README 状态更新
+- [x] 隐私扫描(SPEC §17.4):`scripts/privacy-scan.py` 全库字节级扫描(服务端数据库/公开目录/访问日志/证据 zip vs M/r/私钥字节,**实测零命中**);断网 proving(`scripts/offline-prove-test.ps1`:防火墙阻断全出站 → 真实证明 + 独立复验通过 → 恢复);崩溃残留(`tests/test_privacy.py`:上传失败临时目录零残留,黑名单运行时拒绝,存储/证据 zip 无私密字节)
+- [ ] CI(SPEC §17.5):`.github/workflows/ci.yml` 已入——ubuntu 干净环境双构建 guest、Image ID 两次一致且与 manifest 冻结值一致;windows 纯 CPU 构建 verifier + 全量 pytest + 入库真实收据复验。**待首次 push 到 GitHub 跑绿验证**
+- [x] 性能报告:B0(5s/1v)= 87.1 s 入册;B1/B2/B3 验证时间补测(19.0/38.2/107.4 s);PRD §13.3 目标 vs 实测差距表(60s prove≤30min、receipt≤10MB、verify≤10s **未达标已如实公开**;最低基线 30s≤60min **达标**)
+- [ ] README 状态更新(Image ID 计算命令已加;状态段待 CI 绿后定稿)
 
 **门禁**:PRD §13.2、§13.3 全过。
+**实测(2026-09-01)**:§17.4 三件套全过(Rust 52 + Python 106 测试绿);CI workflow 构建参数已本地复验(纯 CPU `--no-default-features` 构建成功且真实验证 fixture 收据通过)。
 
 ## 6. 测试基线(每阶段都要绿)
 
@@ -224,4 +226,4 @@ scripts/
 - **蓝屏教训(2026-09-01)**:默认 `segment_limit_po2=20` 时单 segment 显存缓冲打爆 8 GB 卡 → 蓝屏;prove 必带 `--segment-po2 18 --keccak-po2 18`(峰值显存稳定 ~4.3 GB,prover 内存 < 1 GB)。构建产物在 `C:\music-zk-target\debug\`(`rust\target\debug\` 下是旧拷贝)。详见 §2 与 docs/ENV.md。
 - **protocol_id 已按 SPEC §5 升为 statement-2**(Phase 2 完整 guest 的 Image ID `5e06801b...`,见 `protocol/v1.json`)。
 
-**第一步(现在做)**:读 SPEC §17.4/§17.5/§18 与 PRD §13.2/§13.3,开始 Phase 5 = SPEC M4(审查收尾):隐私扫描(全库 grep 私密字节、断网 proving、崩溃残留)、CI 双构建 Image ID 一致、性能报告 B0–B3 全量入册、README 状态更新。
+**第一步(现在做)**:Phase 5 = SPEC M4 收尾:首次 push 到 GitHub 让 `.github/workflows/ci.yml` 跑绿(guest 双构建 Image ID 一致门禁),随后按 README 状态段定稿;PRD §13.2/§13.3 门禁复核。已完成:§17.4 隐私三件套、B0 基准 + B1/B2/B3 验证时间、PRD §13.3 差距表。

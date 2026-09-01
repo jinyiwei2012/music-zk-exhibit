@@ -54,11 +54,24 @@
 - **`scripts/demo.ps1`**:一键演示(暂停讲解每步 / `-Auto`)
 - 产物:`music_zk/web` + `verifier/evidence.py`;实测演示:真实证明 → 证据包 → 离线 verify 十项全有效 → tamper 全检出
 
-**进行中:Phase 5(SPEC M4)**——隐私扫描、CI 双构建 Image ID 一致、性能报告 B0–B3 全量、README 定稿。
+**进行中:Phase 5(SPEC M4)**——隐私扫描(§17.4 三件套已过)、CI 双构建 Image ID 一致(workflow 已入,待首次 push 验证)、性能报告 B0–B3 全量(已入册)。
+
+## 从源码计算 guest Image ID(SPEC §17.5,可复现构建)
+
+guest 构建需 WSL2 + risc0-1.97.0 工具链(见 [docs/ENV.md](docs/ENV.md));`protocol/guest-v1.elf`(R0BF)已预构建入库,prove/verify 端零工具链依赖。
+
+```bash
+# WSL 内,仓库根:
+bash scripts/build-guest-wsl.sh
+# 输出的 image_id 即从源码计算的 Image ID;必须与 protocol/v1.json 的 guest.image_id 逐字节一致
+# (冻结:5e06801b5e97e4c3d7bcbc99bf5432ff3fc4056a9cf71b4175038a7e895c7d8a)
+```
+
+等价手工步骤:在 `rust/zkvm-methods/guest` 用 risc0-1.97.0 `cargo build --release --target riscv32im-risc0-zkvm-elf` → `cargo build -p elf2r0bf` 把 user ELF 转 R0BF → `r0vm --elf <r0bf> --id` 得 Image ID。CI 已实现同一流程的双构建比对(见 `.github/workflows/ci.yml`)。
 
 ## 环境要求(已实测)
 
 - **本地 proving 为 Windows 原生**(x86-64,MSVC + CUDA 13.2,驱动 ≥580);guest 构建仍需 WSL2(risc0 工具链无 Windows 二进制),但产物预构建入库,prove 端不依赖 WSL;详见 [docs/PLAN.md §6](docs/PLAN.md) 与 [docs/ENV.md](docs/ENV.md)
 - Python 3.12(conda env `music-zk`);Windows Rust 稳定版(`stable-x86_64-pc-windows-msvc`)+ WSL risc0 toolchain 1.97.0(仅 guest)
 - RISC Zero zkVM 3.0.6(版本已冻结,不得跟随 latest);版本事实表见 [docs/ENV.md](docs/ENV.md)
-- 基准:B0 hello-guest(WSL)7.31 s / 604 MiB;M0(WSL)9.30 s / 606 MiB;M0-Win 原生 CPU 106–120 s;M0-Win CUDA 4.1 s;**Phase 2 B1/B2/B3 = 637 / 1269 / 2544 s**(CUDA,内存限制 po2=18,峰值显存 ~4.3 GB);([docs/benchmarks.md](docs/benchmarks.md))
+- 基准:B0 hello-guest(WSL)7.31 s / 604 MiB;M0(WSL)9.30 s / 606 MiB;M0-Win 原生 CPU 106–120 s;M0-Win CUDA 4.1 s;**B0(5s/1v)= 87.1 s**;**B1/B2/B3 = 637 / 1269 / 2544 s**(CUDA,内存限制 po2=18,峰值显存 ~4.3 GB);验证时间 B0/B1/B2/B3 = 2.6 / 19.0 / 38.2 / 107.4 s;PRD §13.3 目标差距(60s prove≤30min、receipt≤10MB、verify≤10s 未达)已如实公开于 [docs/benchmarks.md](docs/benchmarks.md)([docs/benchmarks.md](docs/benchmarks.md))
