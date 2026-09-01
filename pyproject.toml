@@ -11,7 +11,11 @@ license = { text = "MIT OR Apache-2.0" }
 dependencies = [
     "pynacl>=1.5",   # Ed25519(Phase 3 SPEC §10.1)
     "jcs>=0.2.1",    # RFC 8785 JCS(Phase 3 SPEC §10.2,与 Rust serde_jcs 对拍)
+    "httpx>=0.27",   # CLI 客户端(Phase 3 SPEC §13)
 ]
+
+[project.scripts]
+music-zk = "music_zk.cli.main:main"
 
 [project.optional-dependencies]
 server = [
@@ -21,7 +25,6 @@ server = [
 ]
 dev = [
     "pytest>=8",
-    "httpx>=0.27",         # 服务端测试 TestClient
 ]
 
 [tool.setuptools.packages.find]
