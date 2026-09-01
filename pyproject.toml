@@ -14,7 +14,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+server = [
+    "fastapi>=0.115",      # Phase 3 SPEC §14 服务端
+    "uvicorn>=0.30",       # 本地运行 demo server
+    "python-multipart>=0.0.9",
+]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",         # 服务端测试 TestClient
+]
 
 [tool.setuptools.packages.find]
 include = ["music_zk*"]
