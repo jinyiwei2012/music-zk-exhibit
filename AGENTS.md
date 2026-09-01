@@ -28,7 +28,9 @@
 - Windows(build 10.0.28120),Git Bash + PowerShell;git 2.55.0
 - 系统全局 Python 3.14.6(**不使用**)← 项目环境用 conda:`music-zk`(Python 3.12)。**用户可能在启动 agent 前已手动激活**,agent 必须先按 §8 第一条自检当前是否处于虚拟环境再行动;所有 Python 工作(CLI/server/verifier/tests)都必须在 `music-zk` 内
 - **Rust(Windows 原生)**:rustup 1.29.0,工具链 `stable-x86_64-pc-windows-msvc`(1.98.0);VS Build Tools 18(VC 14.51 + SDK 10.0.26100);CUDA Toolkit **13.2**(12.4 的 cudafe++ 与 VS 2026 不兼容,已移除);NVIDIA 驱动 **616.56**(CUDA 13.x 需 ≥580);RTX 4060 8GB
-- **prove/verify 全部 Windows 原生**(CPU 1 正 4 负门禁绿;**CUDA 已验证**:statement-2 完整 guest 4.1 s vs CPU 106–120 s)。构建前 `. .\scripts\env-win.ps1`(见 docs/ENV.md)
+- **prove/verify 全部 Windows 原生**(CPU 1 正 4 负门禁绿;**CUDA 已验证**:statement-2 完整 guest 4.1 s vs CPU 106–120 s;**Phase 2 真实负载** B1/B2/B3 全过,详见 §9)。构建前 `. .\scripts\env-win.ps1`(见 docs/ENV.md)
+- **内存限制(蓝屏防护,2026-09-01 起 prove 必带)**:`--segment-po2 18 --keccak-po2 18` + `RAYON_NUM_THREADS≤8`。默认 segment po2=20 时单 segment 显存缓冲按 2^20 行分配,8 GB 卡真实负载直接打爆 → 蓝屏;po2=18 实测峰值显存稳定 ~4.3 GB。限制与耗时权衡见 docs/benchmarks.md B1/B2/B3 节。
+- **构建产物位置**:`C:\music-zk-target\debug\`(`rust/.cargo/config.toml` 的 `[build] target-dir`,因 CJK 仓库路径规避 LNK1104)。**脚本/手工一律用这里的 exe**;`rust\target\debug\` 下是迁移前旧拷贝(不认 `--segment-po2`),勿用。
 - **guest 构建仍只在 WSL**(risc0 工具链无 Windows 二进制;rzup 硬性不可用):`bash scripts/build-guest-wsl.sh` → 产物 R0BF 入库 `protocol/guest-v1.elf`
 - 仓库:`main` 分支;`.gitignore` 已覆盖私密与构建产物
 
@@ -148,16 +150,17 @@ scripts/
 
 **门禁**:一条脚本演示 1 正 4 负全部符合预期;`cargo test` + `pytest` 绿。
 
-### Phase 2 = SPEC M1:MIDI Profile + ReferenceSynth(工作量最大)
+### Phase 2 = SPEC M1:MIDI Profile + ReferenceSynth(工作量最大)✅ 门禁通过(2026-09-01)
 
-- [ ] parser:§3.4 全量;SPEC §17.2 每条拒绝测试各一个 case
-- [ ] 波表生成脚本 → 冻结 `wavetable-v1.bin` + SHA-256 入 manifest,从此只读字节
-- [ ] 合成器:§3.5 全常量;native 渲染器输出真实 WAV
-- [ ] guest 内:解析 + Profile 检查 + 合成 + 流式 SHA-256
-- [ ] golden vectors ×6(SPEC §17.1):最短单音 / 四音和弦 / 四句小星星 / 同 tick Off-On / Attack 中提前 Off / 60s+尾音;每个含 MIDI SHA-256、盐、C_M、事件表、sample 数、头尾样本、完整 C_V;**native == guest == Python 三方逐字节一致**
-- [ ] 基准 B1(15s/4v)、B2(30s/4v)入册
+- [x] parser:§3.4 全量;SPEC §17.2 每条拒绝测试各一个 case
+- [x] 波表生成脚本 → 冻结 `wavetable-v1.bin` + SHA-256 入 manifest,从此只读字节
+- [x] 合成器:§3.5 全常量;native 渲染器输出真实 WAV
+- [x] guest 内:解析 + Profile 检查 + 合成 + 流式 SHA-256
+- [x] golden vectors ×6(SPEC §17.1):最短单音 / 四音和弦 / 四句小星星 / 同 tick Off-On / Attack 中提前 Off / 60s+尾音;每个含 MIDI SHA-256、盐、C_M、事件表、sample 数、头尾样本、完整 C_V;**native == guest == Python 三方逐字节一致**
+- [x] 基准 B1(15s/4v)、B2(30s/4v)入册(B3 60s/4v 一并入册,见 docs/benchmarks.md)
 
 **门禁**:30 秒负载 ≤60 分钟真实证明。不达标 → 调低 segment size limit;再不达标 → 缩时长/采样率(**新 protocol_id**)并公开记录。
+**实测(2026-09-01,Win 原生 CUDA)**:B1=637 s、B2=1269 s(≈21.2 min)、B3=2544 s,三负载独立 verifier 全过、峰值显存 ~4.3 GB 零蓝屏;门禁 **达标**。prove 必带 `--segment-po2 18 --keccak-po2 18`(默认 po2=20 打爆 8GB 显存曾蓝屏),详见 §2 与 docs/ENV.md。
 
 ### Phase 3 = SPEC M2:身份、日志、服务端
 
@@ -210,10 +213,11 @@ scripts/
 
 ## 9. 当前状态与你的第一步
 
-- 仓库:`main`,HEAD 含 PRD/SPEC/ZKP_EXPLAINED/README/PLAN/.gitignore、Phase 0–1 代码(rust/ workspace)与 Win 原生迁移产物。
+- 仓库:`main`,HEAD 含 PRD/SPEC/ZKP_EXPLAINED/README/PLAN/.gitignore、Phase 0–2 代码(rust/ workspace、Python verifier)与 Win 原生迁移产物。
 - 环境:§2 所列;conda env `music-zk`(Python 3.12.14);**prove/verify 已迁 Windows 原生**(构建前置 `. .\scripts\env-win.ps1`);WSL2 仅用于 guest 构建(`bash scripts/build-guest-wsl.sh`),工具链版本与接线见 `docs/ENV.md`。
 - **Phase 1 = SPEC M0 已过门禁**(2026-09-01,Win 原生):真实证明(C_M=`0717cc99...`)CPU 106–120 s,独立 verifier 复验通过;1 正 + 3 负 + dev-mode 编译期硬禁(共 5 项)PASS=5/FAIL=0;数字见 `docs/benchmarks.md`。
-- **CUDA 路径已验证**(2026-09-01):statement-2 完整 guest(解析+合成+C_M/C_V 断言)**4.1 s**(vs CPU 106–120 s,约 27× 加速),独立 verifier 通过;CUDA 13.2 + 驱动 616.56(详见 docs/ENV.md)。
+- **Phase 2 = SPEC M1 已过门禁**(2026-09-01,Win 原生 CUDA):MIDI Profile 1 解析器 + ReferenceSynth 1 纯整数合成 + golden vectors ×6(native == guest == Python 逐字节一致)+ 真实负载基准 **B1(15s/4v)= 637 s、B2(30s/4v)= 1269 s ≈ 21.2 min、B3(60s/4v)= 2544 s**,独立 verifier 全过;门禁「30s 负载 ≤60 min」**达标**。
+- **蓝屏教训(2026-09-01)**:默认 `segment_limit_po2=20` 时单 segment 显存缓冲打爆 8 GB 卡 → 蓝屏;prove 必带 `--segment-po2 18 --keccak-po2 18`(峰值显存稳定 ~4.3 GB,prover 内存 < 1 GB)。构建产物在 `C:\music-zk-target\debug\`(`rust\target\debug\` 下是旧拷贝)。详见 §2 与 docs/ENV.md。
 - **protocol_id 已按 SPEC §5 升为 statement-2**(Phase 2 完整 guest 的 Image ID `5e06801b...`,见 `protocol/v1.json`)。
 
-**第一步(现在做)**:读 SPEC §8/§9,开始 Phase 2 = SPEC M1(reference-core 的 MIDI Profile 1 parser + ReferenceSynth 1 纯整数合成 → golden vectors ×6 → 基准 B1/B2)。Rust 构建在 Windows 原生进行;guest 改动后须在 WSL 重建 R0BF 并核对 Image ID 是否变化。
+**第一步(现在做)**:读 SPEC §10–14,开始 Phase 3 = SPEC M2(身份、日志、服务端):`identity init`(Ed25519 + `creator-secret/`)、JCS(RFC 8785,Python 与 Rust `serde_jcs` 对拍)、FastAPI + SQLite 三事件端点(签名/引用/顺序校验 + 字段黑名单 + 两阶段发布)、RFC 6962 风格 Merkle 日志 + STH + inclusion proof、CLI 六步流程(`commit create` / `song publish` / `prove` / `proof publish`)、Windows 无 WSL 降级提示。

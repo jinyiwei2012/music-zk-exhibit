@@ -52,6 +52,8 @@ SPEC §20 已给出关键指令:**M0/M1 先做,基准门不过就砍范围,不�
 
 ### Phase 2 = SPEC M1:MIDI Profile + ReferenceSynth(1–2 周,最大工作量)
 
+> ✅ **已完成(2026-09-01,Win 原生 CUDA)**:parser fail-closed 全量 + 纯整数合成器 + 波表冻结 + 流式摘要 + golden vectors ×6(native == guest == Python 三方逐字节一致)+ 真实负载基准 **B1=637 s、B2=1269 s(≈21.2 min)、B3=2544 s**,独立 verifier 全过、峰值显存 ~4.3 GB 零蓝屏。门禁「30s ≤ 60min」**达标**。内存限制与耗时权衡见 `docs/benchmarks.md` B1/B2/B3 节。
+
 1. **严格 parser**(reference-core):SPEC §8 全部规则 fail-closed;§17.2 的拒绝测试逐条对应。
 2. **整数合成器**:u32 相位累加、2048 点 i16 波表、Q15 包络、8 voice slot 抢占规则(SPEC §9.4)——**全部整数运算,禁止 float**;除法向零截断的公式写进代码注释和 golden vector 文档。
 3. **波表冻结**:写一次性生成脚本产出 `wavetable-v1.bin`,从此只读其字节 + SHA-256,不再改。
@@ -61,7 +63,7 @@ SPEC §20 已给出关键指令:**M0/M1 先做,基准门不过就砍范围,不�
 
 **验收/砍范围线**:30 秒工作负载 ≤ 60 分钟出真实证明。若 8 GB 机器不行:降 segment size limit;再不行:缩到 30 秒时长或降采样率——注意这会产生**新 protocol_id**,要在 manifest 里如实反映。16 GB 机器通过也算概念成立,但"8 GB 未达成"写进公开文档。
 
-### Phase 3 = SPEC M2:身份、日志、服务端(1–2 周)
+### Phase 3 = SPEC M2:身份、日志、服务端(1–2 周)**← 当前阶段(2026-09-01 起)**
 
 1. **Ed25519 创作者身份**:`identity init` 生成密钥,私钥落 `creator-secret/`(目录原子创建、已存在即停)。
 2. **RFC 8785 JCS**:Python 侧没有标准库,选一个经过交叉测试的实现,并用小样本与 Rust `serde_jcs` 对拍;签名体保持小而简单(事件 body 只有几个字段),降低规范化踩坑面。
@@ -164,6 +166,11 @@ bash scripts/build-guest-wsl.sh   # 产物 protocol/guest-v1.elf;核对 Image ID
 
 # 3. 跑基准/门禁
 powershell -ExecutionPolicy Bypass -File scripts/phase1-m0.ps1
+powershell -ExecutionPolicy Bypass -File scripts/bench-phase2.ps1 -Cases b1-15s-4v   # 内存限制已内置(--segment-po2 18)
+
+# 4. Phase 3(进行中):Python 全在 conda env music-zk 内
+conda run -n music-zk pytest
+conda run -n music-zk python -m music_zk.cli identity init --out creator-secret
 ```
 
-工作量粗估(单人):Phase 1 已完成;Phase 2 约 2 周,Phase 3 约 2 周,Phase 4–5 约 1.5 周,合计剩余 5–6 周;其中 Phase 2 门禁(30 秒负载 ≤60 分钟真实证明)是下一个风险检查点。
+工作量粗估(单人):Phase 1–2 已完成(2026-09-01,含 Win 原生迁移与内存限制落地);Phase 3(身份/日志/服务端)约 2 周,Phase 4–5 约 1.5 周,合计剩余 3–4 周。

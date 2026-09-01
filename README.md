@@ -25,11 +25,20 @@
 - protocol_id 已按 SPEC §5 升级:`music-zk-exhibit/midi-profile-1/reference-synth-1/statement-2`
 - 产物:`protocol/guest-v1.elf`(R0BF)+ `protocol/v1.json` manifest;基准入 `docs/benchmarks.md`
 
-**进行中:Phase 2(SPEC M1)**——MIDI Profile 1 解析器 + ReferenceSynth 1 纯整数合成 + golden vectors ×6。
+**Phase 2(SPEC M1:MIDI Profile + ReferenceSynth)已完成 · 2026-09-01(门禁「30s 负载 ≤60 min」达标)**
+
+- `reference-core`:MIDI Profile 1 解析器(fail-closed 全量拒绝测试)+ ReferenceSynth 1 纯整数合成(编译期波表、Q15 包络、8 voice 抢占)
+- 冻结 `wavetable-v1.bin` + `phase_step` 表入 manifest;golden vectors ×6 native == guest == Python 三方逐字节一致
+- zkVM guest(statement-2):解析 + Profile 检查 + 合成 + 流式 SHA-256,输出定长 202 B journal
+- **真实负载基准(Win 原生 CUDA)**:B1(15s/4v)= 637 s、B2(30s/4v)= 1269 s ≈ 21.2 min、B3(60s/4v)= 2544 s;独立 verifier 全过
+- **内存限制(蓝屏防护)**:`--segment-po2 18 --keccak-po2 18`(默认 po2=20 曾打爆 8GB 显存蓝屏;限制后峰值显存 ~4.3 GB、prover 内存 < 1 GB)
+- 基准与限制详见 `docs/benchmarks.md` B1/B2/B3 节;构建产物在 `C:\music-zk-target\debug\`
+
+**进行中:Phase 3(SPEC M2)**——Ed25519 身份 + RFC 8785 JCS + FastAPI/SQLite 服务端 + RFC 6962 Merkle 日志 + CLI 六步流程。
 
 ## 环境要求(已实测)
 
 - **本地 proving 为 Windows 原生**(x86-64,MSVC + CUDA 13.2,驱动 ≥580);guest 构建仍需 WSL2(risc0 工具链无 Windows 二进制),但产物预构建入库,prove 端不依赖 WSL;详见 [docs/PLAN.md §6](docs/PLAN.md) 与 [docs/ENV.md](docs/ENV.md)
 - Python 3.12(conda env `music-zk`);Windows Rust 稳定版(`stable-x86_64-pc-windows-msvc`)+ WSL risc0 toolchain 1.97.0(仅 guest)
 - RISC Zero zkVM 3.0.6(版本已冻结,不得跟随 latest);版本事实表见 [docs/ENV.md](docs/ENV.md)
-- 基准:B0 hello-guest(WSL)7.31 s / 604 MiB;M0(WSL)9.30 s / 606 MiB;M0-Win 原生 CPU 106–120 s;**M0-Win CUDA 4.1 s(~27× 加速)**;([docs/benchmarks.md](docs/benchmarks.md))
+- 基准:B0 hello-guest(WSL)7.31 s / 604 MiB;M0(WSL)9.30 s / 606 MiB;M0-Win 原生 CPU 106–120 s;M0-Win CUDA 4.1 s;**Phase 2 B1/B2/B3 = 637 / 1269 / 2544 s**(CUDA,内存限制 po2=18,峰值显存 ~4.3 GB);([docs/benchmarks.md](docs/benchmarks.md))
