@@ -54,7 +54,13 @@
 - **`scripts/demo.ps1`**:一键演示(暂停讲解每步 / `-Auto`)
 - 产物:`music_zk/web` + `verifier/evidence.py`;实测演示:真实证明 → 证据包 → 离线 verify 十项全有效 → tamper 全检出
 
-**进行中:Phase 5(SPEC M4)**——隐私扫描(§17.4 三件套已过)、CI 双构建 Image ID 一致(workflow 已入,待首次 push 验证)、性能报告 B0–B3 全量(已入册)。
+**Phase 5(SPEC M4:审查收尾)已完成 · 2026-09-01(CI 首次 push 双 job 全绿)**
+
+- **隐私扫描(§17.4)三件套**:`scripts/privacy-scan.py` 全库字节级扫描(数据库/公开目录/日志/证据 zip vs M/r/私钥,**零命中**);`scripts/offline-prove-test.ps1` 防火墙阻断全出站后真实证明+独立复验通过;`tests/test_privacy.py`(上传失败临时目录零残留、黑名单运行时拒绝、存储/证据 zip 无私密字节)
+- **CI(§17.5)已跑绿**:ubuntu 干净环境**双构建 guest**,R0BF SHA-256 一致(⇒ Image ID 一致);windows 纯 CPU 构建 verifier + 全量 pytest + 入库真实收据密码学复验(Image ID `5e06801b...` 绑定)
+- **性能报告全量**:B0(5s/1v)= 87.1 s 入册;B1/B2/B3 验证时间 19.0/38.2/107.4 s;PRD §13.3 目标差距表(60s prove≤30min、receipt≤10MB、verify≤10s **未达已如实公开**;最低基线 30s≤60min **达标**)
+- **从源码计算 Image ID 命令**已写入本文档下方
+- 协议发现(记入 `docs/OPEN-QUESTIONS.md`):guest ELF 经 `file!()` 嵌入绝对构建路径 → Image ID 路径敏感,跨机器复现冻结值不可行;§17.5 门禁取同环境双构建一致
 
 ## 从源码计算 guest Image ID(SPEC §17.5,可复现构建)
 

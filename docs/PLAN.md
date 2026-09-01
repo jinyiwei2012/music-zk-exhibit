@@ -78,13 +78,15 @@ SPEC §20 已给出关键指令:**M0/M1 先做,基准门不过就砍范围,不�
 
 > ✅ **已完成(2026-09-01)**:结果页/技术页/首页(§3.7 文案常量逐字、状态机、S/V 双播放器不默认同步、不能证明默认展开)+ 公开证据包导出(SPEC §12.2:claim/manifest/三回执/journal/zkvm-receipt/song-S/reference-V/checksums/VERIFYING.md)+ `music-zk verify`(SPEC §15 十一项逐项,步骤 1 包损坏不得总体有效)+ `reveal-check` + `demo tamper` 五案例 + `scripts/demo.ps1` 一键演示(暂停讲解每步)。**实测:离线 verify 十项全有效、五个 tamper 案例全部检出、PRD §13.1 表述验收过**。演示链路修复三处:identity ACL 完整控制、prove 填 journal 上下文、song-S glob 校验。
 
-### Phase 5 = SPEC M4:审查收尾(几天)**← 当前阶段(2026-09-01 起)**
+### Phase 5 = SPEC M4:审查收尾(几天)✅ 门禁通过(2026-09-01)
 
 - [x] 隐私扫描三件套(§17.4):`scripts/privacy-scan.py` 字节级扫描零命中;`scripts/offline-prove-test.ps1` 防火墙阻断全出站后真实证明+复验通过;`tests/test_privacy.py` 上传失败临时目录零残留 + 黑名单运行时拒绝 + 存储/证据 zip 无私密字节(4 测试绿)
 - [x] 性能报告:B0(5s/1v)87.1 s 入册;B1/B2/B3 验证时间补测(19.0/38.2/107.4 s);PRD §13.3 差距表诚实公开(60s 三项目标未达,最低基线达标)
-- [ ] CI(§17.5):`.github/workflows/ci.yml`(ubuntu 双构建 guest Image ID 一致门禁 + windows 纯 CPU verifier/pytest/真实收据复验)已入,**待首次 push 跑绿**
-- [ ] README 状态段定稿、隐私扫描/断网脚本说明
-- [ ] PRD §13.2、§13.3 门禁复核
+- [x] CI(§17.5):`.github/workflows/ci.yml` **首次 push 跑绿**——ubuntu 双构建 guest R0BF SHA-256 一致门禁 + windows 纯 CPU verifier/pytest/真实收据复验
+- [x] README 状态段定稿(Image ID 计算命令 + Phase 5 完成状态)
+- [x] PRD §13.2、§13.3 门禁复核(§13.2 全过;§13.3 最低基线达标,目标差距如实公开)
+
+> **协议发现(记入 docs/OPEN-QUESTIONS.md)**:guest ELF 经 `file!()` 嵌入绝对构建路径 → Image ID 路径敏感,跨机器字节级复现冻结值不可行;§17.5 门禁取"同环境双构建一致"。remap-path-prefix 修复须升 protocol_id,v1 不采用。
 
 ## 4. 并行线
 
