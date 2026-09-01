@@ -6,13 +6,16 @@ edition.workspace = true
 [dependencies]
 zkvm-methods = { path = "../zkvm-methods" }
 reference-core = { path = "../reference-core" }
-# Win 原生迁移(2026-09-01):CUDA Toolkit 12.4.1 已装(与 WSL 侧一致),
-# 启用 cuda feature(RTX 4060 8GB)。cuda 隐含 prove;disable-dev-mode 满足红线 2。
-# 如需纯 CPU 构建,去掉 "cuda" 即可(见 docs/ENV.md Win 行)。
-risc0-zkvm = { version = "^3.0.6", default-features = false, features = ["cuda", "std", "disable-dev-mode"] }
+# CUDA 提为 cargo feature(default 开,本地 RTX 4060;CI 无 GPU 用
+# --no-default-features 走纯 CPU)。cuda 隐含 prove;disable-dev-mode 满足红线 2。
+risc0-zkvm = { version = "^3.0.6", default-features = false, features = ["prove", "std", "disable-dev-mode"] }
 # Windows 兼容:配置 rayon 全局池线程栈(risc0 的 C++ poly_fp 深递归需要大栈,
 # 见 zkvm-prove.rs main() 里 ThreadPoolBuilder::build_global)
 rayon = "1.10"
 serde = "1.0"
 bincode = "1.3"
 hex = "0.4"
+
+[features]
+default = ["cuda"]
+cuda = ["risc0-zkvm/cuda"]
