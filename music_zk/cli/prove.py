@@ -83,6 +83,11 @@ def prove(
     secret = _read_secret(Path(secret_dir))
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
+    # 子进程 cwd=out,所有输入路径必须绝对化
+    secret_abs = Path(secret_dir).resolve()
+    out = out.resolve()
+    secret["midi"] = (secret_abs / ORIGINAL_MIDI).read_bytes()
+    secret["salt"] = (secret_abs / SALT_FILE).read_bytes()
 
     prove_bin = _require_binary(PROVE_BIN)
     verify_bin = _require_binary(VERIFY_BIN)
@@ -95,7 +100,7 @@ def prove(
         raise FlowError("C_M 与 t0 已提交承诺不一致(original.mid + salt 不匹配)")
 
     # 2) native ReferenceSynth 渲染真实 V(public 承诺 C_V)
-    midi_file = Path(secret_dir) / ORIGINAL_MIDI
+    midi_file = secret_abs / ORIGINAL_MIDI
     v_file = out / "v.wav"
     proc = _run_bin([render_bin, "render", str(midi_file), str(v_file)], cwd=out, timeout=300)
     if proc.returncode != 0:
@@ -106,7 +111,7 @@ def prove(
     c_v = m.group(1)
 
     # 3) 真实证明(内存限制防蓝屏;dev-mode 编译期硬禁);cwd=out 使产物直接落 proof-work/
-    salt_file = Path(secret_dir) / SALT_FILE
+    salt_file = secret_abs / SALT_FILE
     prov = _run_bin(
         [
             prove_bin, "--cv", c_v,
