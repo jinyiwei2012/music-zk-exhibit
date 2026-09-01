@@ -8,7 +8,10 @@ version = "0.1.0"
 description = "Music-ZK Exhibit —— 非AI音乐的零知识证明(概念展品):验证私有 MIDI 承诺打开与参考合成对应"
 requires-python = ">=3.12"
 license = { text = "MIT OR Apache-2.0" }
-dependencies = []
+dependencies = [
+    "pynacl>=1.5",   # Ed25519(Phase 3 SPEC §10.1)
+    "jcs>=0.2.1",    # RFC 8785 JCS(Phase 3 SPEC §10.2,与 Rust serde_jcs 对拍)
+]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]

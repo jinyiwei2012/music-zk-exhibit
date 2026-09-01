@@ -8,6 +8,9 @@ pub mod midi;
 mod phase_steps;
 pub mod synth;
 
+#[cfg(test)]
+mod jcs_vectors;
+
 pub use midi::{parse_midi, NoteEvent, ParsedMidi, ParseError};
 pub use synth::{render, render_stream, sample_count, SynthParams, SAMPLE_RATE};
 
