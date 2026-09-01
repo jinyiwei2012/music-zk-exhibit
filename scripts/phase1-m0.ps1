@@ -1,4 +1,4 @@
-# scripts/phase1-m0.ps1 - Phase 1(M0/M1)门禁演示:1 正 4 负(Windows 原生版)
+﻿# scripts/phase1-m0.ps1 - Phase 1(M0/M1)门禁演示:1 正 4 负(Windows 原生版)
 #
 # 用法(仓库根,PowerShell):
 #   . .\scripts\env-win.ps1            # 导入 MSVC 环境(每次新 shell 都要)
@@ -10,8 +10,10 @@
 $ErrorActionPreference = "Stop"
 
 $ROOT = Split-Path -Parent $PSScriptRoot
-$PROVE = Join-Path $ROOT "rust\target\debug\zkvm-prove.exe"
-$VERIFY = Join-Path $ROOT "rust\target\debug\zkvm-verify.exe"
+# 二进制在 C:/music-zk-target(target-dir 因 CJK 仓库路径移到 ASCII 盘,见 rust/.cargo/config.toml);
+# rust\target\debug\ 下是迁移前的旧拷贝,勿用。
+$PROVE = "C:\music-zk-target\debug\zkvm-prove.exe"
+$VERIFY = "C:\music-zk-target\debug\zkvm-verify.exe"
 $WORK = Join-Path $env:TEMP "music-zk-gate"
 
 # golden vector minimal-onenote(合法 MIDI Profile 1)

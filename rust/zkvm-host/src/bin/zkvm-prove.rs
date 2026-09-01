@@ -7,6 +7,11 @@
 //!   --commit-event-id <hex32>  :COMMIT 事件 ID(缺省全零,Phase 3 填充)
 //!   --release-event-id <hex32> :RELEASE 事件 ID(缺省全零,Phase 3 填充)
 //!   --allow-dev-mode           :跳过 dev-mode 拒绝断言(仅负向测试素材,红线 2)
+//!   --segment-po2 <13..24>     :每 segment 周期上限 log2(默认 18 → 2^18 cycles)。
+//!                                显存/内存峰值近乎线性随 segment 大小变化;8GB 显存机
+//!                                蓝屏防护:建议 ≤18(默认 20 时单 segment 缓冲可达数 GB)
+//!   --keccak-po2 <14..18>      :keccak 电路 po2 上限(默认 18)
+//!   环境变量 RAYON_NUM_THREADS :CPU 并行上限(默认 min(逻辑核,8),控 RAM 与 64MiB 栈预留)
 use reference_core::{commit_midi, Journal, SALT_LEN};
 use risc0_zkvm::{default_prover, ExecutorEnv};
 use std::fs;
@@ -18,7 +23,26 @@ fn parse_hex32(s: &str, what: &str) -> [u8; 32] {
     b.try_into().unwrap()
 }
 
+/// 解析 po2 上限并做范围校验(内存限制;范围来自 risc0_zkp MIN/MAX_CYCLES_PO2 与
+/// KECCAK_PO2_RANGE)。
+fn parse_po2(s: &str, what: &str, min: u32, max: u32) -> u32 {
+    let v: u32 = s.parse().unwrap_or_else(|e| panic!("{what} 必须是整数: {e}"));
+    assert!(
+        (min..=max).contains(&v),
+        "{what} 必须在 {min}..={max}(got {v})"
+    );
+    v
+}
+
 fn main() {
+    // 内存防护(2026-09-01,蓝屏防护):rayon 全局池默认 ≤8 线程。
+    // 64 MiB 大栈 × 线程数会放大 RAM 峰值;RAYON_NUM_THREADS 可覆盖。
+    if std::env::var("RAYON_NUM_THREADS").is_err() {
+        let n = std::thread::available_parallelism()
+            .map(|x| x.get().min(8))
+            .unwrap_or(4);
+        std::env::set_var("RAYON_NUM_THREADS", n.to_string());
+    }
     // Windows 兼容(方案 A/C):risc0 的 C++ poly_fp 是 20~57 层深递归巨帧,
     // 跑在 rayon 全局池 worker(Windows 默认 2MiB 栈)与调用线程上,必炸。
     // 必须在任何 prove/into_par_iter 之前配置全局池栈;build_global 只能成功一次。
@@ -57,6 +81,8 @@ fn run_prove(args: Vec<String>) -> Result<(), String> {
     let mut pubkey = [0u8; 32];
     let mut commit_id = [0u8; 32];
     let mut release_id = [0u8; 32];
+    let mut segment_po2: Option<u32> = None; // 内存限制,默认 18(见下方 mem profile)
+    let mut keccak_po2: Option<u32> = None; // keccak 电路 po2 上限,默认 18
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -83,6 +109,16 @@ fn run_prove(args: Vec<String>) -> Result<(), String> {
             }
             "--release-event-id" => {
                 release_id = parse_hex32(&args[i + 1], "release_event_id");
+                i += 2;
+                continue;
+            }
+            "--segment-po2" => {
+                segment_po2 = Some(parse_po2(&args[i + 1], "--segment-po2", 13, 24));
+                i += 2;
+                continue;
+            }
+            "--keccak-po2" => {
+                keccak_po2 = Some(parse_po2(&args[i + 1], "--keccak-po2", 14, 18));
                 i += 2;
                 continue;
             }
@@ -128,9 +164,24 @@ fn run_prove(args: Vec<String>) -> Result<(), String> {
     input.extend_from_slice(&c_m);
     input.extend_from_slice(&c_v);
 
-    let env = ExecutorEnv::builder()
+    // 内存限制(蓝屏防护,2026-09-01):降低 segment po2 使单 segment 的显存/内存
+    // 缓冲近乎线性缩小(RTX 4060 8GB 上默认 po2=20 曾触发蓝屏;2^18 为其 1/4)。
+    let seg_po2 = segment_po2.unwrap_or(18);
+    let kec_po2 = keccak_po2.unwrap_or(18);
+    println!(
+        "mem profile: segment_po2={seg_po2} (2^{seg_po2} cycles/seg) keccak_po2={kec_po2} rayon_threads={}",
+        rayon::current_num_threads()
+    );
+
+    let mut env_builder = ExecutorEnv::builder();
+    env_builder
         .write(&input)
-        .map_err(|e| format!("ExecutorEnv write 失败: {e}"))?
+        .map_err(|e| format!("ExecutorEnv write 失败: {e}"))?;
+    env_builder.segment_limit_po2(seg_po2);
+    env_builder
+        .keccak_max_po2(kec_po2)
+        .map_err(|e| format!("keccak_max_po2 失败: {e}"))?;
+    let env = env_builder
         .build()
         .map_err(|e| format!("ExecutorEnv build 失败: {e}"))?;
 
