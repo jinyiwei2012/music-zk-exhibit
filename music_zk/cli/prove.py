@@ -111,10 +111,16 @@ def prove(
     c_v = m.group(1)
 
     # 3) 真实证明(内存限制防蓝屏;dev-mode 编译期硬禁);cwd=out 使产物直接落 proof-work/
+    #    journal 上下文:creator_pubkey/commit_event_id/release_event_id 必须填真实值
+    #    (SPEC §6.4 布局),否则离线验证步骤 10(journal 上下文一致)失败。
     salt_file = secret_abs / SALT_FILE
+    commit_id = secret["commit_receipt"]["server"]["event"]["event_id"]
     prov = _run_bin(
         [
             prove_bin, "--cv", c_v,
+            "--creator-pubkey", secret["pk_hex"],
+            "--commit-event-id", commit_id,
+            "--release-event-id", release_event_id,
             "--segment-po2", str(SEGMENT_PO2),
             "--keccak-po2", str(KECCAK_PO2),
             str(midi_file), str(salt_file),

@@ -36,7 +36,7 @@ from music_zk.verifier.journal import Journal, JournalError
 # 冻结的 guest Image ID(protocol/v1.json guest.image_id;协议冻结后不得改)
 FROZEN_IMAGE_ID = "5e06801b5e97e4c3d7bcbc99bf5432ff3fc4056a9cf71b4175038a7e895c7d8a"
 
-# SPEC §12.2 公开证据包清单
+# SPEC §12.2 公开证据包清单(song-S 的扩展名 = 原歌曲扩展名,按 glob 检查)
 REQUIRED_FILES = (
     "claim.json",
     "protocol-manifest.json",
@@ -46,7 +46,6 @@ REQUIRED_FILES = (
     "proof-receipt.json",
     "journal.bin",
     "zkvm-receipt.bin",
-    "song-S.bin",
     "reference-V.wav",
     "checksums.sha256",
 )
@@ -236,6 +235,8 @@ class EvidenceVerifier:
     def verify(self) -> EvidenceResult:
         res = EvidenceResult()
         missing = [f for f in REQUIRED_FILES if not (self.evidence / f).exists()]
+        if not (self.evidence).glob("song-S.*"):
+            missing.append("song-S.<原扩展名>")
         if missing:
             res.notes.append(f"证据包缺文件: {missing}")
             # 仍继续执行能执行的步骤,但缺失项相关步骤会失败

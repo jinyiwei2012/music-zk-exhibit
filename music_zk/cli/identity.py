@@ -69,7 +69,7 @@ def _restrict_acl_windows(out_dir: Path) -> str | None:
             [
                 "icacls", str(out_dir),
                 "/inheritance:r",
-                f"/grant:r", f"{user}:(OI)(CI)(RX,W)",
+                f"/grant:r", f"{user}:(OI)(CI)F",
             ],
             check=True,
             capture_output=True,
