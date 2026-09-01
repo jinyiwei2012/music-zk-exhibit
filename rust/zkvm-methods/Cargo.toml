@@ -3,8 +3,9 @@ name = "zkvm-methods"
 version.workspace = true
 edition.workspace = true
 
-[build-dependencies]
-risc0-build = { version = "^3.0.6" }
+# 注意:不再有 risc0-build build-dependency / embed_methods。
+# guest ELF 由 WSL 侧脚本构建后入库 protocol/guest-v1.elf,本 crate 只读字节。
+# (Windows 原生不支持 rzup/risc0 工具链,构建期触发 guest 编译会失败。)
 
-[package.metadata.risc0]
-methods = ["guest"]
+[dependencies]
+sha2 = "0.10"

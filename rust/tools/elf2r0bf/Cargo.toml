@@ -1,0 +1,13 @@
+[package]
+name = "elf2r0bf"
+version.workspace = true
+edition.workspace = true
+
+# 将标准 ELF(risc0-build 产物)转换为 R0BF(ProgramBinary)格式,供
+# risc0-zkvm 的 prove/verify 使用。WSL 构建 guest 后运行:
+#   cargo run -p elf2r0bf -- <user.elf> <out.r0bf>
+# 输出可直接入库为 protocol/guest-v1.elf。R0BF = user ELF + V1COMPAT kernel ELF。
+
+[dependencies]
+risc0-binfmt = "3.0.5"
+risc0-zkos-v1compat = "2.2.3"
