@@ -124,31 +124,33 @@ rust/  Cargo.toml
 protocol/  v1.json  wavetable-v1.bin  guest-v1.elf  golden-vectors/
 examples/twinkle-v1/
 tests/
-docs/  PLAN.md  ENV.md  benchmarks.md  OPEN-QUESTIONS.md
+docs/  PLAN.md  ENV.md  benchmarks.md  OPEN-QUESTIONS.md  LIVE-USB.md
 scripts/
 ```
 
 ## 5. 执行阶段(严格按序;每阶段末有门禁)
 
-### Phase 0:冒烟(WSL2,go/no-go,几天)
+### Phase 0:冒烟(WSL2,go/no-go,几天)✅ 门禁通过(2026-08-31)
 
-- [ ] WSL2 内装 rustup 与 RISC Zero 工具链(以官方文档为准),实际版本记入 `docs/ENV.md`
-- [ ] hello-guest:env-io 读字节 `x`,journal 输出 `SHA256(x)`;host 真实 prove(禁 dev mode)→ 独立 verify 通过
-- [ ] 记录耗时/峰值内存/receipt 大小 → `docs/benchmarks.md`
+- [x] WSL2 内装 rustup 与 RISC Zero 工具链(以官方文档为准),实际版本记入 `docs/ENV.md`
+- [x] hello-guest:env-io 读字节 `x`,journal 输出 `SHA256(x)`;host 真实 prove(禁 dev mode)→ 独立 verify 通过
+- [x] 记录耗时/峰值内存/receipt 大小 → `docs/benchmarks.md`
 
 **门禁**:真实 receipt + production verifier 成功。失败 = 项目形态被否决,立即公开结论并停。
+**实测(2026-08-31)**:hello-guest 真实证明 7.31 s / 604 MiB / receipt 216 KiB,独立 verifier 复验通过(B0 入册)。
 
-### Phase 1 = SPEC M0:关系最小闭环
+### Phase 1 = SPEC M0:关系最小闭环 ✅ 门禁通过(2026-09-01)
 
-- [ ] `reference-core`:§3.2 三个 framing + 字节级单测
-- [ ] guest:读 `M,r` → 重算 `C_M` → 输出 §3.3 定长 journal(最终形态须含完整解析与 Profile 检查,Phase 2 补齐)
-- [ ] `zkvm-host`:executor 统计 → prove → **独立 verifier 进程**复验
-- [ ] Python verifier 骨架:验 receipt、journal、Image ID
-- [ ] 负向测试:改 M 一字节 / 错盐 / 错 Image ID / dev-mode 收据 → 全部失败
-- [ ] guest ELF 入库 `protocol/guest-v1.elf`,Image ID 写 manifest
+- [x] `reference-core`:§3.2 三个 framing + 字节级单测
+- [x] guest:读 `M,r` → 重算 `C_M` → 输出 §3.3 定长 journal(最终形态含完整解析与 Profile 检查,Phase 2 补齐)
+- [x] `zkvm-host`:executor 统计 → prove → **独立 verifier 进程**复验
+- [x] Python verifier 骨架:验 receipt、journal、Image ID
+- [x] 负向测试:改 M 一字节 / 错盐 / 错 Image ID / dev-mode 收据 → 全部失败
+- [x] guest ELF 入库 `protocol/guest-v1.elf`,Image ID 写 manifest
 - [x] (2026-09-01 已完成)Windows 原生 prove feature 编译实验 → **结论:可行,prove/verify 已迁 Win 原生**(CPU 1 正 4 负门禁绿;C++ 栈修复 + image_id 字节序修复,详见 `docs/ENV.md` 与 `docs/OPEN-QUESTIONS.md`)
 
 **门禁**:一条脚本演示 1 正 4 负全部符合预期;`cargo test` + `pytest` 绿。
+**实测(2026-09-01,Win 原生)**:真实证明 C_M=`0717cc99...` CPU 106–120 s,独立 verifier 复验通过;1 正 + 3 负 + dev-mode 编译期硬禁 PASS=5/FAIL=0;M0-Win 基准入册,数字见 `docs/benchmarks.md`。
 
 ### Phase 2 = SPEC M1:MIDI Profile + ReferenceSynth(工作量最大)✅ 门禁通过(2026-09-01)
 

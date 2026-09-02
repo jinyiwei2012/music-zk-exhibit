@@ -14,7 +14,7 @@ docs/
 ├── ENV.md                # 存在·环境版本事实表(WSL 侧 guest 构建 + Windows 宿主 + Win 原生迁移要点)
 ├── benchmarks.md         # 存在·全部基准数字(WSL 历史行 + M0-Win 原生行;模板见 SPEC §18)
 ├── OPEN-QUESTIONS.md     # 存在·协议冲突与未定义点(image_id 字节序陷阱等)
-├── LIVE-USB.md           # 规划中·WSL 不可用降级路径(PLAN.md §6.4)
+├── LIVE-USB.md           # 存在(2026-09-01 建)·WSL 不可用降级路径方案设计,未实测(PLAN.md §6.4)
 └── public-evidence-spec/ # .gitignore 已预留,尚未创建
 ```
 
